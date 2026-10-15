@@ -3,7 +3,7 @@
 
 namespace indur {
 
-// The application owns initialization (EEPROM.begin on ESP32/ESP8266).
+// The application owns initialization (EEPROM.begin on ESP32).
 // UI byte accesses stay within attachStorage's region. The backend owns erase granularity.
 template <typename Eeprom> class EEPROMStorage : public Storage {
   public:

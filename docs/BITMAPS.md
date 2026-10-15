@@ -2,6 +2,8 @@
 
 IndurUI icons use one lit/unlit bit per pixel. Bitmap Studio resizes an ordinary image and exports a header that can be passed directly to the menu API.
 
+Choose a [compatible MCU](COMPATIBILITY.md) before designing the interface. Converting to smaller icons saves bitmap storage; it does not make the full library compatible with a classic Nano/Uno. The converter runs on your computer.
+
 ## Desktop interface
 
 Requires Python 3.10+, Pillow, and Tkinter. Windows Python installers normally include Tk. On Linux, your distribution may supply Tk through a separate `python3-tk` package. Pillow is installed with:
@@ -87,7 +89,7 @@ static const uint8_t robotIcon_data[] INDURUI_PROGMEM = { /* packed pixels */ };
 static const indur::Icon robotIcon(robotIcon_data, 32, 32, indur::Memory::Flash);
 ```
 
-On AVR/ESP8266, `Memory::Flash` uses the platform's program-memory read mechanism. For a mutable runtime bitmap, allocate enough RAM and pass `Memory::Ram`. Pointer lifetime and buffer length are the application's responsibility; dimensions do not allocate or copy the bitmap. The core accepts dimensions up to 256×256, while the converter deliberately caps exports at 128×128.
+On AVR, `Memory::Flash` uses program-memory reads; ESP32 uses memory-mapped const data. For a mutable runtime bitmap, allocate enough RAM and pass `Memory::Ram`. Pointer lifetime and buffer length are the application's responsibility; dimensions do not allocate or copy the bitmap. The core accepts dimensions up to 256×256, while the converter deliberately caps exports at 128×128.
 
 Only include a generated static bitmap header where needed. Including it in several translation units may duplicate its data. Large AVR flash layouts may require a board-specific adapter because ordinary `pgm_read_byte` uses the platform's standard program-memory addressing model.
 

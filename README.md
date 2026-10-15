@@ -9,7 +9,7 @@
 
 # IndurUI
 
-An Arduino OLED interface library for robots, instruments, controllers, and your next embedded project. Register your own variables, choose two or three buttons, and let IndurUI arrange the dashboard and settings screens.
+An Arduino OLED interface library for robots, instruments, and controllers on supported ESP32 and large classic AVR targets. Register your own variables, choose two or three buttons, and let IndurUI arrange the dashboard and settings screens.
 
 The design grows out of a working robot interface: rounded panels, an icon menu, scrolling settings, short and long button presses, and values that survive a restart. The reusable library brings those interactions into a cooperative UI core with display and storage adapters.
 
@@ -39,11 +39,25 @@ These SVG previews come from the library's drawing commands; their text uses an 
 
 There is no fixed five-sensor dashboard or project-specific setting list. Register the items your application needs; RAM and display space determine capacity. Pages handle display overflow.
 
+## Choose a compatible MCU first
+
+| Target | Status |
+| --- | --- |
+| ESP32-S3 / ESP32-S3-DevKitC-1 | All five examples compile in CI |
+| ATmega2560 / Arduino Mega 2560 | All five examples compile in CI; budget its 8 KiB SRAM carefully |
+| Other ESP32 targets or classic AVR with ≥8 KiB SRAM and ≥64 KiB flash | Accepted by the target policy, not individually verified |
+| Classic ATmega328P/ATmega168 Nano, Uno, Pro Mini; ATmega32U4 boards | Unsupported; compile-time memory gate rejects them |
+| Other Arduino architectures | Not supported by this release; a validated port is required |
+
+The **classic Nano** has 2 KiB SRAM. A 128×64 SSD1306 framebuffer alone needs 1 KiB, before UI metadata, settings, stack, and application code. Flash-backed icons help with bitmap storage but do not eliminate these other costs. The **Nano ESP32** is a different board using ESP32-S3; it belongs to the accepted ESP32 family, with board-specific configuration still required.
+
+Read the [MCU compatibility and memory guide](docs/COMPATIBILITY.md) before choosing hardware. Build-tested means compilation, not physical certification. For a beginner walkthrough covering installation, wiring, data, settings, buttons, icons, and persistence, use the [user guide](docs/USER_GUIDE.md).
+
 ## Install
 
 ### Arduino IDE
 
-1. Download **IndurUI-1.0.0.zip** from [Releases](https://github.com/RakibulIslam1/indur-ui/releases/latest).
+1. Download **IndurUI-1.0.1.zip** from [Releases](https://github.com/RakibulIslam1/indur-ui/releases/latest).
 2. Choose **Sketch → Include Library → Add .ZIP Library…** and select it.
 3. Install **Adafruit GFX Library** and your display library through Library Manager. The supplied examples use **Adafruit SSD1306** and its **Adafruit BusIO** dependency.
 4. Open **File → Examples → IndurUI → QuickStart**. Adjust the OLED dimensions, address, I²C configuration, and button pins for your board.
@@ -56,7 +70,7 @@ Add these dependencies to your existing Arduino environment:
 
 ```ini
 lib_deps =
-    https://github.com/RakibulIslam1/indur-ui.git#v1.0.0
+    https://github.com/RakibulIslam1/indur-ui.git#v1.0.1
     adafruit/Adafruit SSD1306@^2.5.17
     adafruit/Adafruit GFX Library@^1.12.6
     adafruit/Adafruit BusIO@^1.17.4
@@ -172,7 +186,7 @@ The converter exports the library's exact 1-bit format, including non-byte-align
 
 ## Saved settings
 
-`EEPROMStorage` wraps the board's EEPROM API; you choose the offset and region size. Register settings before attaching storage, then call `load()`. ESP32/ESP8266 applications initialize `EEPROM.begin(...)` first.
+`EEPROMStorage` wraps the board's EEPROM API; you choose the offset and region size. Register settings before attaching storage, then call `load()`. ESP32 applications initialize `EEPROM.begin(...)` first.
 
 ```cpp
 #include <IndurUIEEPROM.h>
@@ -190,6 +204,8 @@ Accepted edits autosave when storage is attached. Unchanged settings skip storag
 
 | Start here | Demonstrates |
 | --- | --- |
+| [User guide](docs/USER_GUIDE.md) | Step-by-step installation, controls, bindings, settings, icons, and saves |
+| [MCU compatibility](docs/COMPATIBILITY.md) | Supported targets, classic Nano exclusion, and complete memory budgeting |
 | [QuickStart](examples/QuickStart/QuickStart.ino) | Three buttons, values, bar, action, settings, splash |
 | [TwoButtons](examples/TwoButtons/TwoButtons.ino) | Complete menu/editor navigation with two buttons |
 | [PersistentSettings](examples/PersistentSettings/PersistentSettings.ino) | EEPROM region, save/load, change callback, confirmed defaults |
@@ -205,15 +221,15 @@ Accepted edits autosave when storage is attached. Unchanged settings skip storag
 
 ![IndurUI architecture](docs/assets/architecture.svg)
 
-The core uses C++11 and has no Arduino dependency. `GfxCanvas` adapts a monochrome Adafruit GFX-compatible display with `display()`. SSD1306 is exercised by the examples; other controllers need an appropriate compatible display adapter or a custom `Canvas`. The UI accepts displays from 64×32 through 1024×1024; labels shorten to fit and screens below 48 pixels high use compact layouts.
+The core uses C++11 and can build on a host without Arduino. Arduino firmware also applies the target policy in `IndurUIBoard.h`. `GfxCanvas` adapts a monochrome Adafruit GFX-compatible display with `display()`. SSD1306 is exercised by the examples; other controllers need an appropriate compatible display adapter or a custom `Canvas`. The UI accepts displays from 64×32 through 1024×1024; labels shorten to fit and screens below 48 pixels high use compact layouts.
 
-Registration uses heap memory. Frame rendering uses fixed local buffers and no library heap allocations; saving/loading/default reset need temporary buffers. SSD1306 also allocates its framebuffer. Compile reports exclude those runtime allocations. An ESP32-class board or AVR Mega offers useful room; the full examples are not validated on a 2 KB AVR Uno.
+Registration uses heap memory. Frame rendering uses fixed local buffers and no library heap allocations; saving/loading/default reset need temporary buffers. SSD1306 also allocates its framebuffer. Compile reports exclude those runtime allocations. The classic Nano/Uno is unsupported, and small AVR targets are rejected during compilation. Passing the memory gate does not guarantee that a large application fits.
 
 UI state changes and button polling do not contain wait loops or delays. Display transfers, EEPROM commits, and your callbacks still take execution time. Keep timing-critical motor control in an appropriate independent task/interrupt, provide coherent sensor snapshots, and call UI methods from one application context. The library is not an ISR or real-time scheduling framework.
 
 ## Verification
 
-Version 1.0.0 includes native behavioral tests for layout bounds, paging, navigation, editor cancellation, typed bindings, button timing/rollover, journal recovery, storage isolation, and injected read/write/flush failures. Converter tests check bit order, row padding, alpha handling, image fitting, generated headers, and file collisions. CI builds all five examples for ESP32-S3 and ATmega2560.
+Native behavioral tests cover layout bounds, paging, navigation, editor cancellation, typed bindings, button timing/rollover, journal recovery, storage isolation, and injected read/write/flush failures. Converter tests check bit order, row padding, alpha handling, image fitting, generated headers, and file collisions. CI builds all five examples for ESP32-S3 and ATmega2560 and checks expected rejection of small AVR targets using real MCU headers.
 
 These checks do not replace testing your actual display, wiring, button hardware, and storage during power interruptions. See [CONTRIBUTING.md](CONTRIBUTING.md) for exact commands.
 

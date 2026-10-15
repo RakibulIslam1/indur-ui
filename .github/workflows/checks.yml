@@ -49,3 +49,6 @@ jobs:
           -e ${{ matrix.board }}-persistent
           -e ${{ matrix.board }}-dashboard
           -e ${{ matrix.board }}-icons
+      - name: Reject small AVR targets and accept the Mega memory baseline
+        if: matrix.board == 'mega'
+        run: python tests/check_boards.py

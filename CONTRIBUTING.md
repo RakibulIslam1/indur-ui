@@ -39,11 +39,12 @@ The GUI check requires Tk and a graphical session; it hides its window, opens a 
 python -m pip install platformio==6.2.0
 pio run -e esp32s3-quick -e esp32s3-two -e esp32s3-persistent -e esp32s3-dashboard -e esp32s3-icons
 pio run -e mega-quick -e mega-two -e mega-persistent -e mega-dashboard -e mega-icons
+python tests/check_boards.py
 ```
 
 The pinned test environments use Espressif32 6.13.0 and Atmel AVR 5.3.0, with Adafruit SSD1306/GFX/BusIO dependencies. Successful compilation establishes API/build compatibility, not physical validation. Flash/static-RAM reports exclude runtime allocations such as UI metadata and the SSD1306 framebuffer. Record hardware testing separately, including board, screen size, address, wiring, timing, and EEPROM implementation.
 
-For release 1.0.0, local checks ran with MSVC 14.50, Python 3.11, Pillow 12.2.0, Tk 8.6, and PlatformIO 6.2.0. CI additionally runs the core with GCC and address/undefined-behavior sanitizers on Linux.
+Local checks use MSVC 14.50, Python 3.11, Pillow 12.2.0, Tk 8.6, and PlatformIO 6.2.0. CI additionally runs the core with GCC and address/undefined-behavior sanitizers on Linux. `check_boards.py` uses PlatformIO's installed AVR compiler and real device headers to accept ATmega2560, reject ATmega328P/168/32U4 with the expected memory explanation, and reject an unsupported Arduino architecture. It checks target policy, not a complete memory budget.
 
 ## Style and assets
 
@@ -68,9 +69,9 @@ The previews retain real layout and bitmap coordinates while using SVG text glyp
 
 Arduino packaging follows the [Arduino library specification](https://docs.arduino.cc/arduino-cli/library-specification). Keep version strings in `library.properties` and `library.json` aligned with the release tag. The release ZIP contains one `IndurUI/` folder with the library and examples; never package `.pio`, private robot sources, credentials, or build logs.
 
-After committing and tagging a release:
+After committing and tagging a release (the explicit newline settings also make the archive reproducible on Windows):
 
 ```sh
 mkdir -p dist
-git archive --format=zip --prefix=IndurUI/ --output=dist/IndurUI-1.0.0.zip v1.0.0
+git -c core.autocrlf=false -c core.eol=lf archive --format=zip --prefix=IndurUI/ --output=dist/IndurUI-1.0.1.zip v1.0.1
 ```

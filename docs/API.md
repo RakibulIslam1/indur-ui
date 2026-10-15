@@ -1,6 +1,6 @@
 # API reference
 
-Include `<IndurUI.h>` for the independent C++11 core. All names live in `indur`. Register your widgets, settings, and menus in `setup()`, then check `begin()`. Run input polling and `tick(millis())` from the application loop.
+Include `<IndurUI.h>` for the independent C++11 core. All names live in `indur`. Register your widgets, settings, and menus in `setup()`, then check `begin()`. Run input polling and `tick(millis())` from the application loop. Arduino firmware must meet the [target policy](COMPATIBILITY.md); classic Nano/Uno and other small AVR targets are rejected at compile time.
 
 ## Ownership and IDs
 
@@ -200,7 +200,7 @@ bool Icon::valid() const;
 bool Icon::pixel(uint16_t x, uint16_t y) const;
 ```
 
-Bitmaps are monochrome, row-padded, MSB-first. White/1 means lit. Icon dimensions can be 1–256 per side; converter export is limited to 128 to keep generated assets practical. The bitmap allocation must contain `ceil(width/8) * height` bytes. The core cannot verify pointer length. Out-of-range pixel reads return false. `INDURUI_PROGMEM` and `Memory::Flash` use flash reads on AVR/ESP8266; use `Memory::Ram` for a runtime buffer. Other platforms use their ordinary memory-mapped const data.
+Bitmaps are monochrome, row-padded, MSB-first. White/1 means lit. Icon dimensions can be 1–256 per side; converter export is limited to 128 to keep generated assets practical. The bitmap allocation must contain `ceil(width/8) * height` bytes. The core cannot verify pointer length. Out-of-range pixel reads return false. `INDURUI_PROGMEM` and `Memory::Flash` use program-memory reads on AVR; ESP32 uses ordinary memory-mapped const data. Use `Memory::Ram` for a runtime buffer.
 
 `<IndurUIIcons.h>` provides `icons::settings()`, `run()`, `sensors()`, `info()`, `tools()`, `storage()`, `robot()`, and `home()`, each 16×16. Include only where used. See [bitmap documentation](BITMAPS.md).
 

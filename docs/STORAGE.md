@@ -4,7 +4,7 @@ The UI's storage layer is independent of your robot's map, telemetry, calibratio
 
 ## Setup order
 
-1. Initialize your board's EEPROM implementation if it requires it. ESP32/ESP8266 use `EEPROM.begin(size)`; AVR EEPROM does not.
+1. Initialize your board's EEPROM implementation if it requires it. ESP32 uses `EEPROM.begin(size)`; classic AVR EEPROM does not.
 2. Construct an `EEPROMStorage<decltype(EEPROM)>` adapter with the initialized device's usable capacity.
 3. Register settings with stable keys, valid initial values, and bounds. Those initial values become defaults.
 4. Initialize the display/buttons and check `ui.begin()`.

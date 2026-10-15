@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.1 — 2026-10-15
+
+- Added a step-by-step user guide and an MCU compatibility/memory guide.
+- Narrowed Arduino/PlatformIO metadata to ESP32 and classic AVR families.
+- Added a compile-time gate rejecting classic Nano/Uno and AVR devices below 8 KiB SRAM or 64 KiB flash, plus Arduino architectures without a validated port.
+- Clarified build-tested targets versus unverified boards, flash-backed icons versus SRAM framebuffers, and classic Nano versus Nano ESP32.
+- Added target-policy checks using real AVR device headers.
+
 ## 1.0.0 — 2026-10-15
 
 - Initial standalone Arduino library based on the Indur robot's OLED interaction design.
