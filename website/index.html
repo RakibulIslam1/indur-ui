@@ -1,0 +1,607 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Turn an image into an OLED-ready icon. IndurUI Bitmap Studio offers live previews, dithering, custom dimensions, and Arduino header exports — all in your browser."
+    />
+    <meta name="theme-color" content="#f4f5ee" />
+    <meta
+      property="og:title"
+      content="IndurUI — Small pixels. Big personality."
+    />
+    <meta
+      property="og:description"
+      content="A little studio for your next OLED interface. Convert images into ready-to-use Arduino bitmaps, right in your browser."
+    />
+    <meta property="og:type" content="website" />
+    <meta
+      property="og:url"
+      content="https://rakibulislam1.github.io/indur-ui/"
+    />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' blob: data:; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'"
+    />
+    <link rel="canonical" href="https://rakibulislam1.github.io/indur-ui/" />
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./style.css" />
+    <title>IndurUI · Bitmap Studio</title>
+    <script type="module" src="./app.mjs"></script>
+  </head>
+  <body>
+    <svg class="svg-defs" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <defs>
+        <symbol id="i-arrow" viewBox="0 0 24 24">
+          <path d="M5 12h14m-6-6 6 6-6 6" />
+        </symbol>
+        <symbol id="i-external" viewBox="0 0 24 24">
+          <path d="M7 17 17 7M7 7h10v10" />
+        </symbol>
+        <symbol id="i-upload" viewBox="0 0 24 24">
+          <path d="M12 16V3m-5 5 5-5 5 5M4 16v5h16v-5" />
+        </symbol>
+        <symbol id="i-download" viewBox="0 0 24 24">
+          <path d="M12 3v13m-5-5 5 5 5-5M4 17v4h16v-4" />
+        </symbol>
+        <symbol id="i-copy" viewBox="0 0 24 24">
+          <rect x="8" y="8" width="12" height="13" rx="2" />
+          <path d="M15 5V3H3v13h2" />
+        </symbol>
+        <symbol id="i-image" viewBox="0 0 24 24">
+          <rect x="3" y="3" width="18" height="18" rx="3" />
+          <circle cx="8" cy="8" r="1.5" />
+          <path d="m3 17 6-5 4 4 3-3 5 5" />
+        </symbol>
+        <symbol id="i-tune" viewBox="0 0 24 24">
+          <path d="M4 6h16M4 12h16M4 18h16M8 3v6m8 0v6M9 15v6" />
+        </symbol>
+        <symbol id="i-code" viewBox="0 0 24 24">
+          <path d="m8 6-6 6 6 6m8-12 6 6-6 6m-2-17-4 22" />
+        </symbol>
+        <symbol id="i-check" viewBox="0 0 24 24">
+          <path d="m5 12 4 4L19 6" />
+        </symbol>
+        <symbol id="i-lock" viewBox="0 0 24 24">
+          <rect x="4" y="10" width="16" height="11" rx="2" />
+          <path d="M8 10V6a4 4 0 0 1 8 0v4m-4 5v2" />
+        </symbol>
+        <symbol id="i-chip" viewBox="0 0 24 24">
+          <rect x="6" y="6" width="12" height="12" rx="2" />
+          <path d="M9 1v5m6-5v5M9 18v5m6-5v5M1 9h5m-5 6h5m12-6h5m-5 6h5" />
+        </symbol>
+      </defs>
+    </svg>
+    <a class="skip-link" href="#studio">Skip to converter</a>
+    <header class="site-header wrap">
+      <a class="brand" href="./" aria-label="IndurUI home"
+        ><span class="brand-mark" aria-hidden="true"
+          ><svg><use href="#i-chip" /></svg></span
+        >Indur<span class="brand-ui">UI</span></a
+      >
+      <nav aria-label="Main navigation">
+        <a class="active" href="#studio">Bitmap Studio</a
+        ><a href="#how-it-works">How it works</a
+        ><a
+          href="https://github.com/RakibulIslam1/indur-ui/blob/main/docs/USER_GUIDE.md"
+          target="_blank"
+          rel="noopener"
+          >Docs <svg><use href="#i-external" /></svg
+        ></a>
+      </nav>
+      <a
+        class="github-link"
+        href="https://github.com/RakibulIslam1/indur-ui"
+        target="_blank"
+        rel="noopener"
+        >View on GitHub <svg><use href="#i-external" /></svg
+      ></a>
+    </header>
+
+    <main>
+      <section class="hero wrap" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <p class="eyebrow">
+            <span class="status-dot"></span> A LITTLE STUDIO FOR YOUR NEXT BIG
+            IDEA
+          </p>
+          <h1 id="hero-title">
+            Small pixels.<br /><span>Big personality.</span>
+          </h1>
+          <p class="hero-description">
+            Give your robot an interface of its own. Turn an image into a crisp
+            OLED icon, then take it straight to your Arduino project.
+          </p>
+          <div class="hero-actions">
+            <a class="button primary" href="#studio"
+              >Let’s make a bitmap <svg><use href="#i-arrow" /></svg></a
+            ><span class="free-note"
+              >Free. Open source.<br />Entirely in your browser.</span
+            >
+          </div>
+        </div>
+        <div
+          class="hero-art"
+          aria-label="Illustration of a robot icon on an OLED circuit board"
+          role="img"
+        >
+          <span class="art-label top-label"
+            >GOOD THINGS COME IN SMALL PIXELS.</span
+          >
+          <div class="orbit orbit-one"></div>
+          <div class="orbit orbit-two"></div>
+          <div class="floating-icon float-bolt" aria-hidden="true">
+            <svg viewBox="0 0 16 16">
+              <path d="M8 1h5L9 6h4L5 15l2-7H3Z" fill="currentColor" />
+            </svg>
+          </div>
+          <div class="circuit-board">
+            <span class="screw screw-tl"></span
+            ><span class="screw screw-tr"></span
+            ><span class="screw screw-bl"></span
+            ><span class="screw screw-br"></span>
+            <div class="board-traces" aria-hidden="true"></div>
+            <span class="board-id">INDURUI / 001</span>
+            <div class="hero-oled">
+              <div class="oled-top">HELLO, WORLD <span>●</span></div>
+              <svg class="hero-robot" viewBox="0 0 32 32" aria-hidden="true">
+                <path
+                  d="M14 0h4v4h-4zM16 4h2v4h-2zM8 8h16v2H8zM6 10h2v16H6zM24 10h2v16h-2zM8 26h16v2H8zM0 12h4v14H0zM28 12h4v14h-4zM10 14h4v6h-4zM18 14h4v6h-4zM12 22h8v2h-8z"
+                  fill="currentColor"
+                /></svg
+              ><span class="oled-caption">MAKE IT YOURS.</span>
+              <div class="oled-bottom">
+                <span>BACK</span><span>01 / 08</span><span>SELECT</span>
+              </div>
+            </div>
+            <span class="board-footer">OLED INTERFACE SYSTEM</span>
+            <div class="board-pins" aria-hidden="true">
+              <i></i><i></i><i></i><i></i><i></i><i></i>
+            </div>
+          </div>
+          <div class="floating-icon float-heart" aria-hidden="true">
+            <svg viewBox="0 0 16 16">
+              <path
+                d="M2 3h4v2h4V3h4v2h2v5h-2v2h-2v2h-2v2H6v-2H4v-2H2v-2H0V5h2Z"
+                fill="currentColor"
+              />
+            </svg>
+          </div>
+          <span class="artifact-tag"
+            ><span class="status-dot"></span> 32 × 32 pixels
+            <b>128 bytes</b></span
+          >
+        </div>
+      </section>
+
+      <div class="workflow-ribbon">
+        <div class="wrap">
+          <span><b>01</b> Drop an image</span><svg><use href="#i-arrow" /></svg
+          ><span><b>02</b> Find your pixels</span
+          ><svg><use href="#i-arrow" /></svg
+          ><span><b>03</b> Build something great</span
+          ><span class="ribbon-end"
+            ><svg><use href="#i-lock" /></svg> Your images stay yours.</span
+          >
+        </div>
+      </div>
+
+      <section
+        id="studio"
+        class="studio-section wrap"
+        aria-labelledby="studio-title"
+      >
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">BITMAP STUDIO</p>
+            <h2 id="studio-title">
+              Make it yours<span class="mint-dot">.</span>
+            </h2>
+          </div>
+          <p class="local-badge">
+            <svg><use href="#i-lock" /></svg> On your device. Never uploaded.
+          </p>
+        </div>
+        <noscript
+          ><p class="notice">
+            Enable JavaScript to use the converter. You can also download the
+            desktop converter from the GitHub repository.
+          </p></noscript
+        >
+        <div class="studio-shell">
+          <div class="controls panel">
+            <div class="panel-heading">
+              <h3><span>01</span> Your image</h3>
+              <button id="reset" class="text-button" type="button">
+                Reset
+              </button>
+            </div>
+            <label id="dropzone" class="dropzone" for="image-file"
+              ><svg><use href="#i-upload" /></svg
+              ><strong>Drop your image here</strong
+              ><span>or <u>browse files</u></span
+              ><small>PNG, JPG, SVG, WebP, GIF, BMP · up to 20 MB</small
+              ><input
+                id="image-file"
+                type="file"
+                accept="image/png,image/jpeg,image/svg+xml,image/webp,image/gif,image/bmp,.bmp"
+                aria-describedby="upload-help"
+            /></label>
+            <p id="upload-help" class="source-name">
+              Demo: Rover · try your own image
+            </p>
+            <div class="demo-row" aria-label="Try a sample icon">
+              <span>Try one</span
+              ><button
+                type="button"
+                class="demo-button selected"
+                data-demo="robot"
+                aria-label="Use robot sample"
+                aria-pressed="true"
+              >
+                ▣</button
+              ><button
+                type="button"
+                class="demo-button"
+                data-demo="bolt"
+                aria-label="Use lightning sample"
+                aria-pressed="false"
+              >
+                ϟ</button
+              ><button
+                type="button"
+                class="demo-button"
+                data-demo="heart"
+                aria-label="Use heart sample"
+                aria-pressed="false"
+              >
+                ♥
+              </button>
+            </div>
+            <div class="control-divider"></div>
+            <div class="field">
+              <label for="size-preset">Output size <span>px</span></label
+              ><select id="size-preset">
+                <option value="12">12 × 12</option>
+                <option value="16">16 × 16</option>
+                <option value="24">24 × 24</option>
+                <option value="32" selected>32 × 32 · menu default</option>
+                <option value="48">48 × 48</option>
+                <option value="64">64 × 64</option>
+                <option value="custom">Custom dimensions</option>
+              </select>
+            </div>
+            <div id="custom-size" class="dimension-row" hidden>
+              <div class="field">
+                <label for="bitmap-width">Width</label
+                ><input
+                  id="bitmap-width"
+                  type="number"
+                  min="1"
+                  max="128"
+                  value="32"
+                  inputmode="numeric"
+                />
+              </div>
+              <span>×</span>
+              <div class="field">
+                <label for="bitmap-height">Height</label
+                ><input
+                  id="bitmap-height"
+                  type="number"
+                  min="1"
+                  max="128"
+                  value="32"
+                  inputmode="numeric"
+                />
+              </div>
+            </div>
+            <div class="two-fields">
+              <div class="field">
+                <label for="fit">Image fit</label
+                ><select id="fit">
+                  <option value="contain">Contain</option>
+                  <option value="cover">Cover</option>
+                  <option value="stretch">Stretch</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="padding">Padding <span>px</span></label
+                ><input
+                  id="padding"
+                  type="number"
+                  min="0"
+                  max="15"
+                  value="0"
+                  inputmode="numeric"
+                />
+              </div>
+            </div>
+            <div class="field threshold-field">
+              <label for="threshold"
+                >Threshold
+                <output id="threshold-value" for="threshold">128</output></label
+              ><input
+                id="threshold"
+                type="range"
+                min="0"
+                max="255"
+                value="128"
+              />
+              <div class="range-labels">
+                <span>More white</span><span>More black</span>
+              </div>
+            </div>
+            <label class="switch-row" for="invert"
+              ><span>Invert colors</span
+              ><input id="invert" type="checkbox" role="switch" /><span
+                class="switch"
+                aria-hidden="true"
+              ></span
+            ></label>
+            <label class="switch-row" for="dither"
+              ><span>Dithering <small>For photos &amp; gradients</small></span
+              ><input id="dither" type="checkbox" role="switch" /><span
+                class="switch"
+                aria-hidden="true"
+              ></span
+            ></label>
+          </div>
+
+          <div class="preview-panel panel">
+            <div class="panel-heading">
+              <h3><span>02</span> Find your pixels</h3>
+              <span class="live-pill"
+                ><span class="status-dot"></span> LIVE</span
+              >
+            </div>
+            <div class="preview-tabs" role="group" aria-label="Preview mode">
+              <button
+                id="bitmap-tab"
+                type="button"
+                class="selected"
+                aria-pressed="true"
+              >
+                Bitmap</button
+              ><button id="menu-tab" type="button" aria-pressed="false">
+                In your menu
+              </button>
+            </div>
+            <div class="preview-viewport">
+              <div id="bitmap-surface" class="pixel-surface">
+                <canvas
+                  id="bitmap-canvas"
+                  width="32"
+                  height="32"
+                  aria-label="Converted monochrome bitmap"
+                ></canvas>
+                <div id="pixel-grid" class="pixel-grid" hidden></div>
+              </div>
+              <div id="menu-surface" class="menu-surface" hidden>
+                <div class="mini-board-label">128 × 64 OLED PREVIEW</div>
+                <canvas
+                  id="menu-canvas"
+                  width="128"
+                  height="64"
+                  aria-label="Your icon in an example OLED menu"
+                ></canvas>
+                <div class="mini-board-pins" aria-hidden="true">● ● ● ●</div>
+              </div>
+            </div>
+            <div class="preview-toolbar">
+              <span id="dimensions-label">32 × 32 px</span
+              ><label class="grid-toggle" for="show-grid"
+                ><input id="show-grid" type="checkbox" /> Pixel grid</label
+              >
+            </div>
+            <div class="bitmap-stats">
+              <div>
+                <strong id="byte-count">128<span> B</span></strong
+                ><span>bitmap payload</span>
+              </div>
+              <div>
+                <strong>1<span> bit</span></strong
+                ><span>per pixel</span>
+              </div>
+              <div>
+                <strong id="lit-count">—</strong><span>pixels lit</span>
+              </div>
+            </div>
+            <p class="preview-note">
+              <span class="tiny-pixel"></span> White pixels light up. Every
+              little dot counts.
+            </p>
+            <p id="feedback" class="feedback" role="status" aria-live="polite">
+              Your first icon is ready. Make it your own.
+            </p>
+          </div>
+
+          <div class="export-panel panel">
+            <div class="panel-heading">
+              <h3><span>03</span> Take it to your robot</h3>
+              <svg class="heading-icon"><use href="#i-code" /></svg>
+            </div>
+            <div class="field">
+              <label for="icon-name">Icon name</label>
+              <div class="filename-input">
+                <input
+                  id="icon-name"
+                  type="text"
+                  value="robotIcon"
+                  maxlength="48"
+                  spellcheck="false"
+                  autocomplete="off"
+                  aria-describedby="name-help"
+                /><span>.h</span>
+              </div>
+              <small id="name-help">The name you’ll use in your sketch.</small>
+            </div>
+            <div class="code-window">
+              <div class="code-heading">
+                <span><i></i> ARDUINO HEADER</span
+                ><button
+                  id="copy-header"
+                  type="button"
+                  aria-label="Copy Arduino header"
+                >
+                  <svg><use href="#i-copy" /></svg><span>Copy</span>
+                </button>
+              </div>
+              <pre
+                id="header-code"
+                tabindex="0"
+                aria-label="Generated Arduino header"
+              ><code>Preparing your bitmap…</code></pre>
+            </div>
+            <button
+              id="download-header"
+              type="button"
+              class="button primary full-width"
+            >
+              <svg><use href="#i-download" /></svg> Download .h file
+            </button>
+            <button
+              id="download-png"
+              type="button"
+              class="button secondary full-width"
+            >
+              <svg><use href="#i-image" /></svg> Save preview PNG
+            </button>
+            <div class="ready-note">
+              <svg><use href="#i-check" /></svg
+              ><span
+                >Ready for IndurUI.<br /><small
+                  >Flash-backed. Sized to fit.</small
+                ></span
+              >
+            </div>
+          </div>
+        </div>
+        <p class="studio-footnote">
+          <svg><use href="#i-chip" /></svg> Building on real hardware? IndurUI
+          targets ESP32 and large AVR boards. Classic Nano / Uno are
+          unsupported.
+          <a
+            href="https://github.com/RakibulIslam1/indur-ui/blob/main/docs/COMPATIBILITY.md"
+            target="_blank"
+            rel="noopener"
+            >Check your MCU <svg><use href="#i-external" /></svg
+          ></a>
+        </p>
+      </section>
+
+      <section
+        id="how-it-works"
+        class="how-section wrap"
+        aria-labelledby="how-title"
+      >
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">FROM PIXELS TO PROJECT</p>
+            <h2 id="how-title">A few pixels. A few lines.</h2>
+          </div>
+          <a
+            class="inline-link"
+            href="https://github.com/RakibulIslam1/indur-ui/blob/main/docs/USER_GUIDE.md"
+            target="_blank"
+            rel="noopener"
+            >Read the full guide <svg><use href="#i-external" /></svg
+          ></a>
+        </div>
+        <div class="how-grid">
+          <article>
+            <span class="step-icon"
+              ><svg><use href="#i-upload" /></svg></span
+            ><span class="step-number">01 /</span>
+            <h3>Bring your idea.</h3>
+            <p>
+              A logo, a little robot, a symbol that feels like you. Drop it in
+              and choose the size your menu needs.
+            </p>
+          </article>
+          <article>
+            <span class="step-icon"
+              ><svg><use href="#i-tune" /></svg></span
+            ><span class="step-number">02 /</span>
+            <h3>Keep the good bits.</h3>
+            <p>
+              Tune contrast with the threshold, try dithering, and see how your
+              icon looks on an OLED before you wire one up.
+            </p>
+          </article>
+          <article>
+            <span class="step-icon"
+              ><svg><use href="#i-code" /></svg></span
+            ><span class="step-number">03 /</span>
+            <h3>Make it part of the build.</h3>
+            <p>
+              Save the header beside your sketch. Include it, assign your icon,
+              and give the menu a personality of its own.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="integration wrap" aria-labelledby="integration-title">
+        <div>
+          <p class="eyebrow">MEET THE REST OF INDURUI</p>
+          <h2 id="integration-title">Your robot.<br />Your interface.</h2>
+          <p>
+            Live dashboards, two or three buttons, editable settings, and saved
+            values. One Arduino library for the interface your project needs.
+          </p>
+          <div class="integration-links">
+            <a
+              class="button primary"
+              href="https://github.com/RakibulIslam1/indur-ui/releases/latest"
+              target="_blank"
+              rel="noopener"
+              >Get the library <svg><use href="#i-download" /></svg></a
+            ><a
+              class="inline-link"
+              href="https://github.com/RakibulIslam1/indur-ui/tree/main/examples"
+              target="_blank"
+              rel="noopener"
+              >Explore examples <svg><use href="#i-external" /></svg
+            ></a>
+          </div>
+        </div>
+        <div class="integration-code">
+          <div>
+            <span class="status-dot"></span> ONE ICON. YOUR WHOLE PROJECT.
+          </div>
+          <pre><code id="usage-code">#include "robotIcon.h"
+
+ui.setIcon(menuItem, robotIcon);</code></pre>
+          <span class="code-caption"
+            >Add the exported header next to your Arduino sketch.</span
+          >
+        </div>
+      </section>
+    </main>
+    <footer class="site-footer wrap">
+      <a class="brand" href="./">Indur<span class="brand-ui">UI</span></a>
+      <p>
+        Built for the joy of building.<br /><span
+          >By
+          <a
+            href="https://github.com/RakibulIslam1"
+            target="_blank"
+            rel="noopener"
+            >Rakibul Islam</a
+          ></span
+        >
+      </p>
+      <div>
+        <a
+          href="https://github.com/RakibulIslam1/indur-ui/blob/main/LICENSE"
+          target="_blank"
+          rel="noopener"
+          >MIT licensed</a
+        ><span>Made of little things.</span>
+      </div>
+    </footer>
+  </body>
+</html>

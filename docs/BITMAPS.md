@@ -4,6 +4,14 @@ IndurUI icons use one lit/unlit bit per pixel. Bitmap Studio resizes an ordinary
 
 Choose a [compatible MCU](COMPATIBILITY.md) before designing the interface. Converting to smaller icons saves bitmap storage; it does not make the full library compatible with a classic Nano/Uno. The converter runs on your computer.
 
+## Browser version
+
+Use **[IndurUI Bitmap Studio online](https://rakibulislam1.github.io/indur-ui/)** with no installation. Choose an image or sample, adjust dimensions and conversion options, inspect the pixel grid or menu preview, then download the Arduino header or a PNG. Clipboard export is available on HTTPS; if permission is blocked, the header is selected for manual copying.
+
+All processing is local to the browser. User images are never uploaded. The browser supports contain/cover/stretch, padding, threshold, inversion, and Floyd–Steinberg dithering, with 1–128 pixels per side. The output bit format is identical to the desktop tool; browser resampling and dithering can differ visually from Pillow. The menu preview is illustrative.
+
+The browser version accepts supported raster images and SVG, up to 20 MB and 16 million decoded pixels. GIF uses its first decoded frame. The website runs on a phone or computer, independently of the MCU. [Website source and deployment guide](../website/README.md)
+
 ## Desktop interface
 
 Requires Python 3.10+, Pillow, and Tkinter. Windows Python installers normally include Tk. On Linux, your distribution may supply Tk through a separate `python3-tk` package. Pillow is installed with:

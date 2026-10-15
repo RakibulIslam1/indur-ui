@@ -9,6 +9,8 @@
 
 # IndurUI
 
+**[Open Bitmap Studio in your browser →](https://rakibulislam1.github.io/indur-ui/)** — convert images, preview your OLED icon, and download a library-ready header. No installation or image upload required.
+
 An Arduino OLED interface library for robots, instruments, and controllers on supported ESP32 and large classic AVR targets. Register your own variables, choose two or three buttons, and let IndurUI arrange the dashboard and settings screens.
 
 The design grows out of a working robot interface: rounded panels, an icon menu, scrolling settings, short and long button presses, and values that survive a restart. The reusable library brings those interactions into a cooperative UI core with display and storage adapters.
@@ -159,7 +161,9 @@ Add more readings and the library creates more pages. Use larger minimum widths 
 
 ## Bring your own icons
 
-Run Bitmap Studio with Python 3.10+:
+Open the **[online Bitmap Studio](https://rakibulislam1.github.io/indur-ui/)**. Drop an image, adjust the size and preview, and download a `.h` file. Processing stays in your browser; no images are sent to a server. It also offers a pixel grid, illustrative OLED menu preview, clipboard export, and native-size PNG download.
+
+For the offline desktop converter, use Python 3.10+:
 
 ```sh
 python -m pip install -r tools/requirements.txt

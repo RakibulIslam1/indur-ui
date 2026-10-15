@@ -114,7 +114,9 @@ Callbacks should return promptly. Use `addScreen(...)` for application-specific 
 ui.addAction("Run", requestRun, nullptr, indur::Root, indur::icons::run());
 ```
 
-To create your own, install the converter dependency and run:
+To create your own, open **[Bitmap Studio online](https://rakibulislam1.github.io/indur-ui/)**, choose an image, and export a header. Conversion happens locally in your browser.
+
+For the offline desktop version, install the converter dependency and run:
 
 ```sh
 python -m pip install -r tools/requirements.txt
