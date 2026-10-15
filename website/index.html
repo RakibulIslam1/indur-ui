@@ -82,6 +82,7 @@
         >Indur<span class="brand-ui">UI</span></a
       >
       <nav aria-label="Main navigation">
+        <a class="nav-oled" href="#oled-lab">OLED Lab</a>
         <a class="active" href="#studio">Bitmap Studio</a
         ><a href="#how-it-works">How it works</a
         ><a
@@ -409,6 +410,14 @@
                 <strong id="lit-count">—</strong><span>pixels lit</span>
               </div>
             </div>
+            <div class="pixel-tools" aria-label="Pixel editing tools">
+              <label
+                ><input id="edit-pixels" type="checkbox" /> Edit pixels</label
+              >
+              <button id="undo-pixels" type="button" disabled>Undo</button>
+              <button id="flip-pixels" type="button">Flip ↔</button>
+              <button id="rotate-pixels" type="button">Rotate ↻</button>
+            </div>
             <p class="preview-note">
               <span class="tiny-pixel"></span> White pixels light up. Every
               little dot counts.
@@ -490,6 +499,123 @@
             >Check your MCU <svg><use href="#i-external" /></svg
           ></a>
         </p>
+      </section>
+
+      <section id="oled-lab" class="oled-lab wrap" aria-labelledby="oled-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">OLED CAPTURE LAB</p>
+            <h2 id="oled-title">Real code. Every pixel.</h2>
+          </div>
+          <a
+            class="inline-link"
+            href="https://github.com/RakibulIslam1/indur-ui/blob/main/docs/MINI_ROBOT_TEST.md"
+            target="_blank"
+            rel="noopener"
+            >Run it on your mini <svg><use href="#i-external" /></svg
+          ></a>
+        </div>
+        <p class="capture-intro">
+          Exact 128 × 64 framebuffer captures from IndurUI and the real Adafruit
+          GFX renderer, with demo values. No substitute fonts or SVG redraws.
+          Explore a screen, or capture the OLED on your own robot.
+        </p>
+        <div
+          id="screen-gallery"
+          class="screen-gallery"
+          aria-label="Real UI framebuffer gallery"
+        ></div>
+        <div class="capture-workbench">
+          <div class="capture-viewer">
+            <div class="capture-viewer-heading">
+              <strong id="capture-title">Live dashboard</strong
+              ><span id="capture-info">128 × 64</span>
+            </div>
+            <div class="capture-display">
+              <canvas
+                id="capture-canvas"
+                width="128"
+                height="64"
+                aria-label="Exact OLED framebuffer capture"
+              ></canvas>
+            </div>
+            <div class="capture-exports">
+              <label for="capture-scale"
+                >PNG scale
+                <select id="capture-scale">
+                  <option value="1">1× native</option>
+                  <option value="4" selected>4× sharp</option>
+                  <option value="8">8× sharp</option>
+                </select></label
+              ><button
+                id="capture-download"
+                type="button"
+                class="button primary"
+                disabled
+              >
+                Save screenshot</button
+              ><button
+                id="capture-copy"
+                type="button"
+                class="text-button"
+                disabled
+              >
+                Copy JSON
+              </button>
+            </div>
+          </div>
+          <div class="capture-controls">
+            <h3>Your robot, on screen.</h3>
+            <p>
+              Upload the <b>MiniRobotTest</b> example, connect USB, and capture
+              exactly what its OLED is drawing.
+            </p>
+            <div class="serial-actions">
+              <button
+                id="serial-connect"
+                type="button"
+                class="button secondary"
+              >
+                Connect robot USB</button
+              ><button
+                id="serial-capture"
+                type="button"
+                class="button primary"
+                disabled
+              >
+                Capture OLED
+              </button>
+            </div>
+            <p id="serial-help">
+              Desktop Chrome / Edge, HTTPS, 115200 baud. Close PlatformIO’s
+              serial monitor before connecting.
+            </p>
+            <label for="capture-input">Or paste a saved frame</label
+            ><textarea
+              id="capture-input"
+              rows="3"
+              spellcheck="false"
+              placeholder='INDURUI_FRAME {"format":"indurui-ssd1306-v1",...}'
+            ></textarea>
+            <div class="capture-import-actions">
+              <button
+                id="capture-import"
+                type="button"
+                class="button secondary"
+              >
+                Load pasted frame</button
+              ><label class="file-button" for="capture-file"
+                >Open .json<input
+                  id="capture-file"
+                  type="file"
+                  accept=".json,.txt,application/json"
+              /></label>
+            </div>
+            <p id="capture-status" role="status" aria-live="polite">
+              Loading a real UI frame…
+            </p>
+          </div>
+        </div>
       </section>
 
       <section

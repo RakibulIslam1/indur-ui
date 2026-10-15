@@ -10,13 +10,15 @@ Use an SSD1306 128×64 I²C display for the supplied examples. The library can u
 
 ## 2. Install the library
 
-1. Download **IndurUI-1.0.1.zip** from [Releases](https://github.com/RakibulIslam1/indur-ui/releases/latest).
+1. Download **IndurUI-1.1.0.zip** from [Releases](https://github.com/RakibulIslam1/indur-ui/releases/latest).
 2. In Arduino IDE, choose **Sketch → Include Library → Add .ZIP Library…**.
 3. Install **Adafruit GFX Library**, **Adafruit SSD1306**, and their **Adafruit BusIO** dependency through Library Manager.
 4. Select the correct board/core and port.
 5. Open **File → Examples → IndurUI → QuickStart** or **TwoButtons**.
 
 The Bitmap Studio desktop converter is optional and runs separately on your computer.
+
+For the ESP32-S3 mini robot, use the complete [MiniRobotTest walkthrough](MINI_ROBOT_TEST.md), with its existing pins, dedicated PlatformIO environments, and exact OLED capture instructions.
 
 ## 3. Connect and configure the display and buttons
 

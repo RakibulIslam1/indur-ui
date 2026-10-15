@@ -39,6 +39,7 @@ The GUI check requires Tk and a graphical session; it hides its window, opens a 
 python -m pip install platformio==6.2.0
 pio run -e esp32s3-quick -e esp32s3-two -e esp32s3-persistent -e esp32s3-dashboard -e esp32s3-icons
 pio run -e mega-quick -e mega-two -e mega-persistent -e mega-dashboard -e mega-icons
+pio run -e mini_ui_test -e mini_ui_test_2buttons
 python tests/check_boards.py
 ```
 
@@ -63,7 +64,13 @@ g++ -std=c++11 -Isrc tests/render_screens.cpp src/IndurUI.cpp -o .build/render_s
 .build/render_screens
 ```
 
-The previews retain real layout and bitmap coordinates while using SVG text glyphs. Keep diagrams and descriptions consistent with behavior; avoid unsupported timing or durability claims.
+Those older SVG previews retain layout coordinates but use substitute text glyphs. The website's **exact framebuffer captures** instead use the real GFX text and drawing renderer:
+
+```sh
+python tools/render_oled.py --gfx-dir ".pio/libdeps/esp32s3-quick/Adafruit GFX Library"
+```
+
+This requires Adafruit GFX 1.12.6 and a host C++ compiler. Linux CI checks out the official dependency at its `1.12.6` tag. Host shims supply Arduino/Print interfaces only; GFX itself is unmodified. The generated JSON and PNG assets in `website/frames/` must match a fresh render. GFX's own license remains in the external dependency. See the [upstream project](https://github.com/adafruit/Adafruit-GFX-Library/tree/1.12.6).
 
 ## Packaging
 
@@ -73,5 +80,7 @@ After committing and tagging a release (the explicit newline settings also make 
 
 ```sh
 mkdir -p dist
-git -c core.autocrlf=false -c core.eol=lf archive --format=zip --prefix=IndurUI/ --output=dist/IndurUI-1.0.1.zip v1.0.1
+git -c core.autocrlf=false -c core.eol=lf archive --format=zip --prefix=IndurUI/ --output=dist/IndurUI-1.1.0.zip v1.1.0
 ```
+
+Run `arduino-lint --compliance specification --library-manager submit` against a clean archive extracted into a folder named `IndurUI`. Build caches and local tool executables are excluded by Git; linting a developer checkout with those untracked folders gives irrelevant errors. Arduino Library Manager registration follows the [official registry procedure](https://github.com/arduino/library-registry#adding-a-library-to-library-manager), independently of creating a GitHub release.

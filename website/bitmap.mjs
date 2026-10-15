@@ -163,6 +163,24 @@ export function pack(bits, width, height) {
   return bytes;
 }
 
+export function transformBits(bits, width, height, operation) {
+  dimensions(width, height);
+  if (bits.length !== width * height)
+    throw new Error("Pixel count does not match dimensions.");
+  if (!["flip", "rotate"].includes(operation))
+    throw new Error("Unknown pixel transform.");
+  const outWidth = operation === "rotate" ? height : width;
+  const outHeight = operation === "rotate" ? width : height;
+  const output = new Uint8Array(bits.length);
+  for (let y = 0; y < height; y++)
+    for (let x = 0; x < width; x++) {
+      const nx = operation === "rotate" ? height - 1 - y : width - 1 - x;
+      const ny = operation === "rotate" ? x : y;
+      output[ny * outWidth + nx] = bits[y * width + x];
+    }
+  return { bits: output, width: outWidth, height: outHeight };
+}
+
 export function header(bytes, width, height, name) {
   dimensions(width, height);
   validateName(name);

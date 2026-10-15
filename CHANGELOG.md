@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.0 — 2026-10-15
+
+- Added a complete ESP32-S3 MiniRobotTest example and two/three-button PlatformIO environments: live IR/encoder data, custom diagnostic pages, grouped settings, lock behavior, gallery, and asynchronous progress.
+- Kept mini motor outputs at neutral; persisted demo settings in a dedicated Preferences namespace without opening the robot's EEPROM storage.
+- Added exact SSD1306 framebuffer export over serial and a browser OLED Lab with eight real-renderer captures, JSON import, Web Serial capture, and sharp PNG exports.
+- Added browser pixel editing, mirror, rotate, and undo to Bitmap Studio; its menu preview uses a real captured background with the user's icon composited into the slot.
+- Added reproducible Adafruit GFX capture generation, framebuffer/pixel-transform tests, browser import/export and simulated USB checks, and clean-package Arduino specification validation.
+- Prepared Arduino Library Manager submission under Rakibul Islam's existing GitHub account and public maintainer contact.
+
 ## 1.0.1 — 2026-10-15
 
 - Added a step-by-step user guide and an MCU compatibility/memory guide.

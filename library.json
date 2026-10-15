@@ -1,13 +1,38 @@
 {
   "name": "IndurUI",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Adaptive OLED dashboards, two/three-button menus and persistent typed settings for Arduino robots and embedded projects.",
   "keywords": ["oled", "ui", "robot", "menu", "eeprom", "dashboard"],
-  "repository": {"type": "git", "url": "https://github.com/RakibulIslam1/indur-ui.git"},
-  "authors": [{"name": "Rakibul Islam", "url": "https://github.com/RakibulIslam1", "maintainer": true}],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/RakibulIslam1/indur-ui.git"
+  },
+  "authors": [
+    {
+      "name": "Rakibul Islam",
+      "url": "https://github.com/RakibulIslam1",
+      "maintainer": true
+    }
+  ],
   "license": "MIT",
   "frameworks": ["arduino"],
   "platforms": ["espressif32", "atmelavr"],
-  "dependencies": {"adafruit/Adafruit GFX Library": "^1.12.6"},
-  "export": {"include": ["src/*", "examples/*", "tools/bitmap_converter.py", "tools/requirements.txt", "docs/*", "README.md", "LICENSE", "library.properties", "library.json", "keywords.txt"]}
+  "dependencies": {
+    "adafruit/Adafruit GFX Library": "^1.12.6",
+    "adafruit/Adafruit SSD1306": "^2.5.17"
+  },
+  "export": {
+    "include": [
+      "src/*",
+      "examples/*",
+      "tools/bitmap_converter.py",
+      "tools/requirements.txt",
+      "docs/*",
+      "README.md",
+      "LICENSE",
+      "library.properties",
+      "library.json",
+      "keywords.txt"
+    ]
+  }
 }

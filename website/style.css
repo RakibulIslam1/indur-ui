@@ -1638,7 +1638,7 @@ button:disabled {
     gap: 16px;
     font-size: 11px;
   }
-  .site-header nav > a:nth-child(2) {
+  .site-header nav > .nav-oled {
     display: none;
   }
   .site-header nav svg {
@@ -2027,6 +2027,301 @@ button:disabled {
     flex-direction: row;
     justify-content: space-between;
     font-size: 9px;
+  }
+}
+.pixel-tools {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 16px 8px 0;
+  font: 11px var(--mono);
+}
+.pixel-tools label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.pixel-tools button,
+.file-button {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--white);
+  color: var(--ink);
+  padding: 7px 10px;
+  cursor: pointer;
+}
+#bitmap-canvas.editing {
+  cursor: crosshair;
+  touch-action: none;
+}
+.oled-lab {
+  padding-top: 52px;
+  padding-bottom: 65px;
+  scroll-margin-top: 20px;
+}
+.oled-lab .section-heading {
+  margin-bottom: 14px;
+}
+.capture-intro {
+  max-width: 750px;
+  color: var(--muted);
+  line-height: 1.7;
+  font-size: 14px;
+}
+.screen-gallery {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin: 30px 0;
+}
+.screen-gallery button {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--white);
+  color: var(--ink);
+  overflow: hidden;
+  padding: 9px;
+  text-align: left;
+  transition:
+    border-color 0.2s,
+    transform 0.2s;
+}
+.screen-gallery button:hover {
+  transform: translateY(-3px);
+  border-color: #739f7e;
+}
+.screen-gallery button.selected {
+  border-color: var(--ink);
+  box-shadow: 0 0 0 1px var(--ink);
+  background: #e8f0df;
+}
+.screen-gallery img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 5px;
+  image-rendering: pixelated;
+}
+.screen-gallery span {
+  display: block;
+  padding: 11px 4px 4px;
+  font: 12px var(--mono);
+}
+.capture-workbench {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  border: 1px solid var(--line);
+  border-radius: 17px;
+  background: var(--white);
+  overflow: hidden;
+}
+.capture-viewer {
+  padding: 25px;
+  background: #eaf0e3;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.capture-viewer-heading {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 9px;
+  margin-bottom: 24px;
+}
+.capture-viewer-heading strong {
+  font-size: 15px;
+}
+.capture-viewer-heading span {
+  color: var(--muted);
+  font: 10px var(--mono);
+  align-self: center;
+}
+.capture-display {
+  background: #080c0a;
+  padding: 20px;
+  border: 8px solid #243d32;
+  border-radius: 12px;
+  box-shadow: 0 12px 18px #193d3118;
+}
+.capture-display canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+  background: black;
+}
+.capture-exports {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 24px;
+}
+.capture-exports label {
+  font: 10px var(--mono);
+}
+.capture-exports select {
+  padding: 9px 5px;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--white);
+}
+.capture-exports .button {
+  min-height: 40px;
+  padding: 10px 15px;
+  font-size: 12px;
+}
+.capture-exports .text-button {
+  border: 0;
+  background: none;
+  color: var(--ink);
+  text-decoration: underline;
+  font-size: 12px;
+}
+.capture-controls {
+  padding: 28px;
+  min-width: 0;
+}
+.capture-controls h3 {
+  margin: 0 0 12px;
+  font-size: 26px;
+  letter-spacing: -0.7px;
+}
+.capture-controls p {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.65;
+}
+.serial-actions,
+.capture-import-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+.capture-controls .button {
+  min-height: 39px;
+  padding: 10px 14px;
+  font-size: 12px;
+}
+.capture-controls #serial-help {
+  font: 10px/1.7 var(--mono);
+  margin: 12px 0 22px;
+}
+.capture-controls > label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.capture-controls textarea {
+  display: block;
+  width: 100%;
+  min-height: 75px;
+  resize: vertical;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  border-radius: 7px;
+  padding: 10px;
+  font: 10px/1.6 var(--mono);
+  color: var(--ink);
+  margin-bottom: 10px;
+}
+.file-button {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+}
+.file-button input {
+  width: 1px;
+  height: 1px;
+  position: absolute;
+  opacity: 0;
+}
+.file-button:focus-within {
+  outline: 3px solid #3b885f;
+  outline-offset: 3px;
+}
+#capture-status {
+  font: 10px/1.7 var(--mono);
+  min-height: 34px;
+  margin-bottom: 0;
+}
+#capture-status.error {
+  color: #9a3025;
+}
+@media (max-width: 1000px) {
+  .capture-workbench {
+    grid-template-columns: 1fr;
+  }
+  .capture-display {
+    max-width: 560px;
+    width: 100%;
+    margin: 0 auto;
+  }
+  .capture-viewer {
+    padding: 24px;
+  }
+}
+@media (max-width: 600px) {
+  .oled-lab {
+    padding-top: 25px;
+    padding-bottom: 35px;
+  }
+  .oled-lab .section-heading {
+    display: block;
+  }
+  .oled-lab .section-heading h2 {
+    font-size: 29px;
+  }
+  .oled-lab .section-heading > a {
+    display: inline-flex;
+    margin-top: 14px;
+  }
+  .capture-intro {
+    font-size: 12px;
+  }
+  .screen-gallery {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin: 22px 0;
+  }
+  .screen-gallery button {
+    padding: 6px;
+    border-radius: 9px;
+  }
+  .screen-gallery span {
+    font-size: 9px;
+    padding: 9px 2px 3px;
+  }
+  .capture-viewer,
+  .capture-controls {
+    padding: 17px;
+  }
+  .capture-display {
+    border-width: 5px;
+    padding: 12px;
+  }
+  .capture-controls h3 {
+    font-size: 23px;
+  }
+  .capture-viewer-heading {
+    margin-bottom: 18px;
+  }
+  .capture-exports {
+    gap: 10px;
+  }
+  .capture-exports .button {
+    padding: 10px;
+    font-size: 11px;
+  }
+  .pixel-tools {
+    font-size: 10px;
+    gap: 6px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

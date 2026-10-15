@@ -8,6 +8,8 @@
 #include "../../examples/RobotDashboard/RobotDashboard.ino"
 #elif INDURUI_EXAMPLE == 5
 #include "../../examples/CustomIcons/CustomIcons.ino"
+#elif INDURUI_EXAMPLE == 6
+#include "../../examples/MiniRobotTest/MiniRobotTest.ino"
 #else
-#error Select an INDURUI_EXAMPLE from 1 to 5
+#error Select an INDURUI_EXAMPLE from 1 to 6
 #endif

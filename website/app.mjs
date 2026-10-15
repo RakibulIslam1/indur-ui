@@ -5,7 +5,10 @@ import {
   pack,
   header,
   validateName,
+  transformBits,
 } from "./bitmap.mjs";
+import { parseFrame } from "./oled.mjs";
+import "./screen-lab.mjs";
 
 const $ = (id) => document.getElementById(id);
 const bitmapCanvas = $("bitmap-canvas");
@@ -27,6 +30,9 @@ const state = {
   code: "",
   view: "bitmap",
   loadId: 0,
+  undo: [],
+  stroke: null,
+  menuFrame: null,
 };
 
 function feedback(message, kind = "") {
@@ -150,6 +156,27 @@ function paintMenu() {
   const ink = "#d9fff0";
   context.fillStyle = "#071b17";
   context.fillRect(0, 0, 128, 64);
+  if (state.menuFrame) {
+    const frame = state.menuFrame;
+    context.fillStyle = ink;
+    for (let y = 0; y < 64; y++)
+      for (let x = 0; x < 128; x++) {
+        if (x >= 48 && x < 80 && y >= 2 && y < 34) continue;
+        if (frame.bits[y * 128 + x]) context.fillRect(x, y, 1, 1);
+      }
+    const rect = fitRect(width, height, 32, 32);
+    for (let y = 0; y < rect.height; y++)
+      for (let x = 0; x < rect.width; x++) {
+        if (
+          bits[
+            Math.floor((y * height) / rect.height) * width +
+              Math.floor((x * width) / rect.width)
+          ]
+        )
+          context.fillRect(48 + rect.x + x, 2 + rect.y + y, 1, 1);
+      }
+    return;
+  }
   context.strokeStyle = ink;
   context.fillStyle = ink;
   context.lineWidth = 1;
@@ -176,6 +203,33 @@ function paintMenu() {
   context.fillStyle = "#071b17";
   context.fillText("BACK", 20, 61);
   context.fillText("SELECT", 108, 61);
+}
+
+function showResult(result) {
+  state.result = result;
+  const { bits, bytes, width, height } = result;
+  paintBitmap(bits, width, height);
+  paintMenu();
+  $("dimensions-label").textContent = `${width} × ${height} px`;
+  $("byte-count").replaceChildren(
+    document.createTextNode(String(bytes.length)),
+    Object.assign(document.createElement("span"), { textContent: " B" }),
+  );
+  $("lit-count").textContent =
+    `${Math.round((bits.reduce((sum, bit) => sum + bit, 0) / bits.length) * 100)}%`;
+  $("download-png").disabled = false;
+  $("undo-pixels").disabled = !state.undo.length;
+  updateHeader();
+}
+
+function rememberPixels() {
+  if (!state.result) return;
+  state.undo.push({
+    ...state.result,
+    bits: state.result.bits.slice(),
+    bytes: state.result.bytes.slice(),
+  });
+  if (state.undo.length > 20) state.undo.shift();
 }
 
 function updateHeader() {
@@ -242,17 +296,8 @@ function render() {
     const rgba = context.getImageData(0, 0, opts.width, opts.height).data;
     const bits = monochrome(rgba, { ...opts, contentRect: rect });
     const bytes = pack(bits, opts.width, opts.height);
-    state.result = { ...opts, bits, bytes };
-    paintBitmap(bits, opts.width, opts.height);
-    paintMenu();
-    $("dimensions-label").textContent = `${opts.width} × ${opts.height} px`;
-    $("byte-count").replaceChildren(
-      document.createTextNode(String(bytes.length)),
-      Object.assign(document.createElement("span"), { textContent: " B" }),
-    );
-    $("lit-count").textContent =
-      `${Math.round((bits.reduce((sum, bit) => sum + bit, 0) / bits.length) * 100)}%`;
-    $("download-png").disabled = false;
+    state.undo = [];
+    showResult({ ...opts, bits, bytes });
     $("bitmap-width").setAttribute("aria-invalid", "false");
     $("bitmap-height").setAttribute("aria-invalid", "false");
     updateHeader();
@@ -429,6 +474,8 @@ $("copy-header").addEventListener("click", async () => {
   }
 });
 $("reset").addEventListener("click", () => {
+  $("edit-pixels").checked = false;
+  bitmapCanvas.classList.remove("editing");
   $("size-preset").value = "32";
   $("bitmap-width").value = $("bitmap-height").value = "32";
   $("fit").value = "contain";
@@ -442,3 +489,109 @@ $("reset").addEventListener("click", () => {
   feedback("A fresh start. Your default icon is ready.");
 });
 useSample("robot");
+
+function editPixel(event) {
+  if (!state.stroke || !state.result) return;
+  const bounds = bitmapCanvas.getBoundingClientRect();
+  const x = Math.floor(
+    ((event.clientX - bounds.left) * state.result.width) / bounds.width,
+  );
+  const y = Math.floor(
+    ((event.clientY - bounds.top) * state.result.height) / bounds.height,
+  );
+  if (x < 0 || y < 0 || x >= state.result.width || y >= state.result.height)
+    return;
+  const index = y * state.result.width + x;
+  state.result.bits[index] = state.stroke.value;
+  state.result.bytes = pack(
+    state.result.bits,
+    state.result.width,
+    state.result.height,
+  );
+  showResult(state.result);
+}
+$("edit-pixels").addEventListener("change", () => {
+  bitmapCanvas.classList.toggle("editing", $("edit-pixels").checked);
+  feedback(
+    $("edit-pixels").checked
+      ? "Click or drag to retouch pixels. Image controls rebuild the conversion."
+      : "Pixel editing is off.",
+  );
+});
+bitmapCanvas.addEventListener("pointerdown", (event) => {
+  if (!$("edit-pixels").checked || !state.result) return;
+  event.preventDefault();
+  const bounds = bitmapCanvas.getBoundingClientRect();
+  const x = Math.min(
+    state.result.width - 1,
+    Math.max(
+      0,
+      Math.floor(
+        ((event.clientX - bounds.left) * state.result.width) / bounds.width,
+      ),
+    ),
+  );
+  const y = Math.min(
+    state.result.height - 1,
+    Math.max(
+      0,
+      Math.floor(
+        ((event.clientY - bounds.top) * state.result.height) / bounds.height,
+      ),
+    ),
+  );
+  rememberPixels();
+  state.stroke = { value: 1 - state.result.bits[y * state.result.width + x] };
+  bitmapCanvas.setPointerCapture(event.pointerId);
+  editPixel(event);
+});
+bitmapCanvas.addEventListener("pointermove", editPixel);
+for (const name of ["pointerup", "pointercancel", "lostpointercapture"])
+  bitmapCanvas.addEventListener(name, () => {
+    state.stroke = null;
+  });
+for (const operation of ["flip", "rotate"])
+  $(operation + "-pixels").addEventListener("click", () => {
+    if (!state.result) return;
+    rememberPixels();
+    const changed = transformBits(
+      state.result.bits,
+      state.result.width,
+      state.result.height,
+      operation,
+    );
+    $("size-preset").value = "custom";
+    $("custom-size").hidden = false;
+    $("bitmap-width").value = changed.width;
+    $("bitmap-height").value = changed.height;
+    showResult({
+      ...state.result,
+      ...changed,
+      bytes: pack(changed.bits, changed.width, changed.height),
+    });
+    feedback(
+      operation === "flip"
+        ? "Bitmap mirrored. Undo is available."
+        : "Bitmap rotated 90°. Undo is available.",
+    );
+  });
+$("undo-pixels").addEventListener("click", () => {
+  const previous = state.undo.pop();
+  if (!previous) return;
+  $("size-preset").value = "custom";
+  $("custom-size").hidden = false;
+  $("bitmap-width").value = previous.width;
+  $("bitmap-height").value = previous.height;
+  showResult(previous);
+  feedback("Last pixel edit undone.");
+});
+fetch(new URL("./frames/menu.json", import.meta.url))
+  .then((response) => {
+    if (!response.ok) throw new Error("Menu frame not available");
+    return response.json();
+  })
+  .then((frame) => {
+    state.menuFrame = parseFrame(frame);
+    paintMenu();
+  })
+  .catch(() => {});

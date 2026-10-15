@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const http = require("node:http");
 const fs = require("node:fs/promises");
 const path = require("node:path");
+const { installSerialMock, checkOledLab } = require("./test_oled_browser.cjs");
 const { chromium } = require(
   process.env.PLAYWRIGHT_PACKAGE ||
     path.resolve(__dirname, "../.build/web-tools/node_modules/playwright"),
@@ -60,6 +61,7 @@ async function main() {
       permissions: ["clipboard-read", "clipboard-write"],
     });
     const page = await context.newPage();
+    await installSerialMock(page);
     const errors = [];
     const requests = [];
     page.on("pageerror", (error) => errors.push(error.message));
@@ -99,13 +101,11 @@ async function main() {
       ].forEach(([a, b]) => x.fillRect(a, b, 1, 1));
       return c.toDataURL("image/png").split(",")[1];
     });
-    await page
-      .locator("#image-file")
-      .setInputFiles({
-        name: "pattern.png",
-        mimeType: "image/png",
-        buffer: Buffer.from(image, "base64"),
-      });
+    await page.locator("#image-file").setInputFiles({
+      name: "pattern.png",
+      mimeType: "image/png",
+      buffer: Buffer.from(image, "base64"),
+    });
     await page.waitForFunction(() =>
       document
         .querySelector("#upload-help")
@@ -150,23 +150,19 @@ async function main() {
     assert.equal(await page.locator("#download-png").isDisabled(), true);
     await page.locator("#bitmap-width").fill("9");
     assert.equal(await page.locator("#download-header").isEnabled(), true);
-    await page
-      .locator("#image-file")
-      .setInputFiles({
-        name: "wrong.txt",
-        mimeType: "text/plain",
-        buffer: Buffer.from("not an image"),
-      });
+    await page.locator("#image-file").setInputFiles({
+      name: "wrong.txt",
+      mimeType: "text/plain",
+      buffer: Buffer.from("not an image"),
+    });
     assert.ok(
       (await page.locator("#feedback").innerText()).includes("Choose a PNG"),
     );
-    await page
-      .locator("#image-file")
-      .setInputFiles({
-        name: "broken.png",
-        mimeType: "image/png",
-        buffer: Buffer.from("broken image"),
-      });
+    await page.locator("#image-file").setInputFiles({
+      name: "broken.png",
+      mimeType: "image/png",
+      buffer: Buffer.from("broken image"),
+    });
     await page.waitForFunction(() =>
       document
         .querySelector("#feedback")
@@ -196,15 +192,13 @@ async function main() {
           { type: "image/svg+xml" },
         ),
       );
-      document
-        .querySelector("#dropzone")
-        .dispatchEvent(
-          new DragEvent("drop", {
-            bubbles: true,
-            cancelable: true,
-            dataTransfer: dt,
-          }),
-        );
+      document.querySelector("#dropzone").dispatchEvent(
+        new DragEvent("drop", {
+          bubbles: true,
+          cancelable: true,
+          dataTransfer: dt,
+        }),
+      );
       return true;
     });
     assert.ok(uploaded);
@@ -213,6 +207,7 @@ async function main() {
     );
     assert.equal(await page.locator("#lit-count").innerText(), "100%");
     await page.locator("#reset").click();
+    await checkOledLab(page, artifacts);
     await page.setViewportSize({ width: 390, height: 844 });
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.screenshot({

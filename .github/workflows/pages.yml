@@ -7,12 +7,14 @@ on:
       - "website/**"
       - "tests/test_bitmap.mjs"
       - "tests/test_website.cjs"
+      - "tests/test_oled*"
       - ".github/workflows/pages.yml"
   pull_request:
     paths:
       - "website/**"
       - "tests/test_bitmap.mjs"
       - "tests/test_website.cjs"
+      - "tests/test_oled*"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -36,7 +38,7 @@ jobs:
         with:
           node-version: "24"
       - name: Bitmap format and image processing checks
-        run: node --test tests/test_bitmap.mjs
+        run: node --test tests/test_bitmap.mjs tests/test_oled.mjs
       - name: Install browser test tools
         run: |
           npm install --prefix .build/web-tools --no-save playwright@1.64.1
