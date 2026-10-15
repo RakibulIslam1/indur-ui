@@ -64,7 +64,7 @@ Read the [MCU compatibility and memory guide](docs/COMPATIBILITY.md) before choo
 3. Install **Adafruit GFX Library** and your display library through Library Manager. The supplied examples use **Adafruit SSD1306** and its **Adafruit BusIO** dependency.
 4. Open **File → Examples → IndurUI → QuickStart**. Adjust the OLED dimensions, address, I²C configuration, and button pins for your board.
 
-The GitHub release is ready to install as a ZIP. This project is not currently listed in Arduino Library Manager.
+The GitHub release is ready to install as a ZIP. The [Arduino Library Manager submission (#9399)](https://github.com/arduino/library-registry/pull/9399) passed validation and was merged. The listing is still pending registry processing; use the ZIP until **IndurUI** appears in Library Manager.
 
 ### PlatformIO
 
