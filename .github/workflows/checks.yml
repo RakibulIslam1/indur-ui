@@ -1,0 +1,51 @@
+name: Build and tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  behavior:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - name: Native UI and storage behavior
+        run: |
+          mkdir -p .build
+          g++ -std=c++11 -Wall -Wextra -pedantic -g -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -Isrc -Itests/fakes tests/test_core.cpp src/IndurUI.cpp -o .build/test_core
+          .build/test_core
+      - name: Converter and desktop export
+        run: |
+          python -m pip install -r tools/requirements.txt
+          python -m unittest discover -s tests -p 'test_converter.py' -v
+          sudo apt-get update -qq
+          sudo apt-get install -y python3-tk xvfb xauth
+          xvfb-run -a python tests/check_gui.py
+
+  examples:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        board: [esp32s3, mega]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - run: python -m pip install platformio==6.2.0
+      - name: Compile all five examples
+        run: >-
+          pio run
+          -e ${{ matrix.board }}-quick
+          -e ${{ matrix.board }}-two
+          -e ${{ matrix.board }}-persistent
+          -e ${{ matrix.board }}-dashboard
+          -e ${{ matrix.board }}-icons
