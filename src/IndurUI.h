@@ -23,6 +23,11 @@ static const Id Root = 0xfffe;
 static const uint8_t AllGroups = 255;
 
 enum class Event : uint8_t { Previous, Next, Select, Back };
+enum class Press : uint8_t { None, Click, Hold, Repeat };
+enum class InterfaceStyle : uint8_t { Original, Cards };
+enum class InputStyle : uint8_t { Standard, Original };
+enum class DashboardLayout : uint8_t { Auto, Cards, Bars, Arc };
+enum class WidgetPlacement : uint8_t { Body, Status, Editor, StatusAndEditor };
 enum class View : uint8_t {
     Dashboard,
     Menu,
@@ -90,6 +95,7 @@ typedef void (*TextReader)(void *context, char *output, size_t capacity);
 typedef void (*ScreenDraw)(Canvas &canvas, void *context);
 typedef bool (*ScreenEvent)(Event event, void *context);
 typedef void (*ChangeHandler)(Id setting, Change reason, void *context);
+typedef void (*ValueFormatter)(double value, char *output, size_t capacity, void *context);
 
 namespace detail {
 void unsignedText(uint64_t value, char *out, size_t capacity, bool negative = false);
@@ -191,12 +197,18 @@ struct Binding {
 };
 
 struct Theme {
+    InterfaceStyle style;
     uint8_t radius;
     uint8_t minWidgetWidth;
     uint8_t minWidgetHeight;
     uint8_t iconSize;
     uint16_t refreshMs;
-    Theme() : radius(3), minWidgetWidth(48), minWidgetHeight(22), iconSize(32), refreshMs(100) {}
+    uint8_t minBarWidth, minStatusWidth, statusRows;
+    uint16_t contextPageMs;
+    Theme()
+        : style(InterfaceStyle::Original), radius(3), minWidgetWidth(48), minWidgetHeight(22),
+          iconSize(32), refreshMs(100), minBarWidth(24), minStatusWidth(40), statusRows(1),
+          contextPageMs(2500) {}
 };
 
 class UI {
@@ -223,6 +235,23 @@ class UI {
     Id addText(const char *label, TextReader read, void *context = 0);
     Id addText(const char *label, const char *liveText);
     template <typename T>
+    Id addStatus(const char *label, T &value, const char *unit = "", uint8_t decimals = 0) {
+        Id id = addValue(label, value, unit, decimals);
+        if (id != Invalid)
+            setWidgetPlacement(id, WidgetPlacement::StatusAndEditor);
+        return id;
+    }
+    template <typename T>
+    Id addContext(const char *label, T &value, const char *unit = "", uint8_t decimals = 0,
+                  uint8_t group = AllGroups) {
+        Id id = addValue(label, value, unit, decimals);
+        if (id != Invalid) {
+            setWidgetPlacement(id, WidgetPlacement::Editor);
+            setWidgetContextGroup(id, group);
+        }
+        return id;
+    }
+    template <typename T>
     Id addNumber(const char *key, const char *label, T &value, double minimum, double maximum,
                  double step = 1, const char *unit = "", uint8_t decimals = 0, uint8_t group = 0) {
         return addSetting(key, label, Binding::ref(value), minimum, maximum, step, unit, decimals,
@@ -245,16 +274,32 @@ class UI {
                    Icon icon = Icon());
     Id addScreen(const char *label, ScreenDraw draw, ScreenEvent event = 0, void *context = 0,
                  Id parent = Root, Icon icon = Icon());
+    Id addDashboard(const char *label, uint8_t group,
+                    DashboardLayout layout = DashboardLayout::Auto, Id parent = Root,
+                    Icon icon = Icon());
     bool setIcon(Id menuItem, Icon icon);
     bool setEnabled(Id menuItem, bool enabled);
     bool setWidgetVisible(Id widget, bool visible);
+    bool setWidgetPlacement(Id widget, WidgetPlacement placement);
+    bool setWidgetGroup(Id widget, uint8_t group);
+    bool setWidgetContextGroup(Id widget, uint8_t settingsGroup);
     bool setReadOnly(Id setting, bool readOnly);
+    bool setSettingFormatter(Id setting, ValueFormatter formatter, void *context = 0);
     void onChange(ChangeHandler handler, void *context = 0);
     void shortcut(Event event, Action action, void *context = 0);
     void setTitle(const char *title);
     void setTheme(const Theme &theme);
     void setMenuStyle(MenuStyle style);
     void setThreeButtons(bool enabled);
+    void setInputStyle(InputStyle style);
+    InputStyle inputStyle() const;
+    bool bindHomeButton(uint8_t button, Press press, const char *label, Action action,
+                        void *context = 0);
+    void handleButton(uint8_t button, Press press);
+    void setButtonHeld(uint8_t button, bool held);
+    void setHomeGroup(uint8_t group);
+    void setDashboardLayout(DashboardLayout layout);
+    void setAlert(const char *message);
     void setAutoSave(bool enabled);
 
     bool begin();
@@ -263,6 +308,7 @@ class UI {
     void handle(Event event);
     void home();
     void openMenu(Id parent = Root);
+    void openDashboard(uint8_t group, DashboardLayout layout = DashboardLayout::Auto);
     void openSettings(uint8_t group = AllGroups);
     bool edit(Id setting);
     void notify(const char *message, uint32_t duration = 1200);
@@ -283,6 +329,7 @@ class UI {
     uint16_t dashboardPages() const;
     uint16_t dashboardPage() const;
     Id selectedSetting() const;
+    Id selectedMenuItem() const;
     Error error() const;
     const char *errorText() const;
     void clearError();
@@ -298,7 +345,6 @@ class UI {
     Id addEntry(const char *, uint8_t, Action, ScreenDraw, ScreenEvent, void *, Id, Icon, uint8_t);
 };
 
-enum class Press : uint8_t { None, Click, Hold, Repeat };
 struct ButtonTiming {
     uint16_t debounceMs, holdMs, repeatMs, stuckMs;
     ButtonTiming() : debounceMs(25), holdMs(350), repeatMs(120), stuckMs(5000) {}

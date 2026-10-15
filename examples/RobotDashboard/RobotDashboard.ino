@@ -9,7 +9,7 @@ Adafruit_SSD1306 display(128, 64, &Wire, -1);
 indur::GfxCanvas<Adafruit_SSD1306> canvas(display);
 indur::UI ui(canvas, "Explorer");
 indur::Buttons buttons(ui, 2, 3, 4);
-const char *sensorNames[] = {"Left", "Front L", "Front", "Front R", "Right"};
+const char *sensorNames[] = {"L", "LD", "F", "RD", "R"};
 int sensors[5] = {};
 long encoder = 0;
 float temperature = 23.6f;
@@ -49,19 +49,31 @@ void setup() {
     Wire.begin();
     if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C))
         return;
-    // Five narrow sensor cards fit one page; extra values get automatic pages.
+    // The original instrument layout keeps status, sensor bars, and diagnostics separate.
     indur::Theme theme;
-    theme.minWidgetWidth = 24;
+    theme.minWidgetWidth = 64;
+    theme.minBarWidth = 24;
     ui.setTheme(theme);
+    ui.setInputStyle(indur::InputStyle::Original);
+    ui.setHomeGroup(0);
+    ui.addStatus("Enc", encoder);
+    ui.addStatus("SP", speed);
+    ui.addStatus("T", temperature, "", 1);
+    ui.addContext("Mode", mode);
+    ui.addContext("Dbg", diagnostics);
+    ui.addContext("SP", speed);
     for (uint8_t i = 0; i < 5; ++i)
         ui.addBar(sensorNames[i], sensors[i], 0, 1023);
-    ui.addValue("Encoder", encoder, "ticks", 0);
-    ui.addValue("Temp", temperatureF, nullptr, "F", 1);
-    ui.addText("Status", status);
+    ui.setWidgetGroup(ui.addValue("Encoder", encoder, "ticks", 0), 1);
+    ui.setWidgetGroup(ui.addValue("Temp", temperatureF, nullptr, "F", 1), 1);
+    ui.setWidgetGroup(ui.addText("Status", status), 1);
     ui.addNumber("speed", "Speed", speed, 0, 100, 5, "%", 0, 1);
     ui.addToggle("debug", "Diagnostics", diagnostics, 2);
     ui.addChoice("mode", "Mode", mode, modeLabels, 3, 1);
     indur::Id tools = ui.addMenu("Tools", indur::Root, indur::icons::tools());
+    ui.addDashboard("Sensor readings", 0, indur::DashboardLayout::Arc, tools,
+                    indur::icons::sensors());
+    ui.addDashboard("Telemetry", 1, indur::DashboardLayout::Cards, tools, indur::icons::info());
     ui.addAction("Calibrate", askCalibration, nullptr, tools, indur::icons::sensors());
     ui.addSettings("Motion", 1, tools, indur::icons::settings());
     ui.addSettings("Diagnostics", 2, tools, indur::icons::info());
@@ -78,6 +90,7 @@ void loop() {
         sensors[i] = (now / 10 + i * 175) % 1024;
     encoder = now / 10; // Demo values: replace with a synchronized encoder snapshot.
     buttons.update(now);
+    now = millis();
     if (calibrating) {
         uint32_t elapsed = now - calibrationStart;
         if (elapsed >= 2500) {

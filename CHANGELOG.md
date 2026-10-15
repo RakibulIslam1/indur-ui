@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.2.0 — 2026-10-15
+
+- Restored the original instrument hierarchy: status strips, separate sensor bars, numbered three-row settings, live editor telemetry, and an animated loading splash. Cards remains a selectable style.
+- Added body groups, menu-accessible adaptive dashboards, Auto/Cards/Bars/Arc layouts, independently paged status, and settings-group editor context.
+- Added selectable Original/Standard controls and six labeled home-button bindings. Original editing uses left-increase/right-decrease and held Back/Save with either button count; context-aware full-screen hold feedback matches the original interaction.
+- Preserved menu/setting selection across return paths, added custom engineering-value formatters and persistent dashboard alerts, and retained typed settings, journal storage, and custom screens.
+- Reorganized MiniRobotTest with live sensor tuning, focused diagnostics, neutral motor outputs, and isolated NVS. Updated RobotDashboard and twelve exact OLED gallery captures.
+- Added geometry, content grouping, editor context filtering, physical-button, and navigation history regression coverage.
+
 ## 1.1.0 — 2026-10-15
 
 - Added a complete ESP32-S3 MiniRobotTest example and two/three-button PlatformIO environments: live IR/encoder data, custom diagnostic pages, grouped settings, lock behavior, gallery, and asynchronous progress.

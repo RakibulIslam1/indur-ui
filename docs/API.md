@@ -53,6 +53,11 @@ Integer dashboard values format directly from their original type, preserving ev
 | `addBar(label, NumberReader, context, min, max, unit="")` | Computed bar |
 | `addText(label, TextReader, context=nullptr)` | Callback-rendered text |
 | `addText(label, const char *liveText)` | Borrowed C string, reread every frame |
+| `addStatus(label, variable, unit="", decimals=0)` | Compact status field on dashboards and in the editor |
+| `addContext(label, variable, unit="", decimals=0, group=AllGroups)` | Live editor-only context, optionally restricted to a settings group |
+| `setWidgetPlacement(widgetId, placement)` | Move a widget to Body, Status, Editor, or StatusAndEditor |
+| `setWidgetGroup(widgetId, group)` | Assign a body group 0–254 |
+| `setWidgetContextGroup(widgetId, settingsGroup)` | Restrict its editor context to a group; AllGroups removes filtering |
 | `setWidgetVisible(widgetId, visible)` | Hide/show without removing registration; returns false for bad ID |
 | `widgetCount()` | Registered count, including hidden widgets |
 | `dashboardPages()` / `dashboardPage()` | Current page count / zero-based current page |
@@ -61,9 +66,11 @@ Register returns the category's `Id`, or `Invalid` and an error. No widget refer
 
 ### Automatic layout
 
-Default minimum card dimensions are 48×22 pixels. Columns come from `width / max(24, minWidgetWidth)`; rows use `availableHeight / max(22, minWidgetHeight)`, with a minimum of one. The page capacity is columns × rows. Visible widgets fill rows in registration order; a partial final page expands its remaining cards to use the space. Hiding widgets recalculates pagination, with at least one page.
+The default Original style separates status, bar pages, and other value cards. `Auto` puts registered bars on sensor pages before value-card pages. Body groups can further separate independent sections. Explicit Cards, Bars, and Arc layouts are available for home and menu-accessible dashboards. See the [complete original-style and content guide](ORIGINAL_STYLE.md).
 
-At 128×64 the default gives two spacious cards per page. Setting `minWidgetWidth = 24` provides five narrow sensor bars across a page. Larger screens can show multiple rows. Displays below 48 pixels high omit the dashboard title to preserve room for the data and footer. Long text shortens with `...`; numeric values that cannot fit show `--` so partial digits cannot be mistaken for a measurement. Control/non-ASCII characters in standard UI text become `?`. Full setting labels appear in the editor header when they fit. Very narrow bars prioritize their label and fill; numeric labels/units appear when there is room. Units show on larger value cards when the value is not using the large font; detailed units remain visible in the setting editor. Custom screens own their own text rendering rules.
+Card minimums remain 48×22. Columns use `width / max(24, minWidgetWidth)` and rows use available height with a minimum of one. Bars use `minBarWidth`, default 24, so five fit across 128 pixels. Values appear below vertical bars when a column is at least 32 pixels wide. A partial final page expands remaining cards. Status/context fields use `minStatusWidth` and at most two rows. Extra context pages rotate using `contextPageMs`. Below 48 pixels high, status fields join body pages and editor telemetry is omitted for a usable compact editor.
+
+Long labels use ellipses when at least six characters fit; narrower labels retain their first characters. Numeric values that cannot fit show `--` rather than partial digits. Control/non-ASCII characters become `?`. Units show on sufficiently tall cards and in the settings editor. Custom screens own their layout and rendering. Choose `Theme::style = InterfaceStyle::Cards` with `DashboardLayout::Cards` to retain the earlier mixed-card presentation.
 
 ## Settings registration
 
@@ -73,6 +80,7 @@ At 128×64 the default gives two spacious cards per page. Setting `minWidgetWidt
 | `addToggle(key, label, boolVariable, group=0)` | OFF/ON editor |
 | `addChoice(key, label, indexVariable, labels, count, group=0)` | Named options for an arithmetic index variable |
 | `setReadOnly(settingId, readOnly)` | Show a setting but prevent editor entry |
+| `setSettingFormatter(settingId, ValueFormatter, context=nullptr)` | Format live/pending values; null restores built-in formatting |
 | `onChange(handler, context=nullptr)` | One callback for accepted edits, loaded records, and defaults |
 | `edit(settingId)` | Open editor; returns false for missing/read-only setting |
 | `selectedSetting()` | Selected setting ID, or `Invalid` when no matching setting |
@@ -83,6 +91,8 @@ Keys are nonempty, stable strings; their FNV-1a 32-bit hashes identify stored va
 Groups are 0–254. `AllGroups` (255) selects every group and cannot be assigned to a setting. Choice count is 1–255; labels and their array must outlive the UI. Set index values to 0..count−1. Number bounds must fit the underlying variable type, and the initial value must be finite and within bounds. Integer settings require integral bounds and steps; use floating types for fractional increments.
 
 The editor starts from a snapshot, clamps adjustments to min/max, and keeps a pending value. Save writes the variable and optionally storage; a failed persistent save restores the old variable and leaves the editor open. Cancel discards pending changes. A read-only setting reports `READ ONLY`. Settings autosave only after an accepted editor change; modifying a variable in your application requires explicit `save()` if you want to persist it.
+
+Original-style settings use three two-line numbered rows at 128×64, with a sliding viewport and a bounded scroll indicator. The editor displays up to two rows of registered live context above the pending value. A formatter has signature `void(double value, char *out, size_t capacity, void *context)` and must respect the output capacity. It changes presentation without changing the stored value or adjustment step.
 
 ```cpp
 void onChange(indur::Id setting, indur::Change reason, void *context);
@@ -98,10 +108,12 @@ void onChange(indur::Id setting, indur::Change reason, void *context);
 | `addMenu(label, parent=Root, icon=Icon())` | Create a submenu |
 | `addSettings(label="Settings", group=AllGroups, parent=Root, icon=Icon())` | Open a settings group |
 | `addScreen(label, ScreenDraw, ScreenEvent=nullptr, context=nullptr, parent=Root, icon=Icon())` | Custom drawing and optional input handler |
+| `addDashboard(label, group, layout=DashboardLayout::Auto, parent=Root, icon=Icon())` | Menu entry for a filtered adaptive dashboard |
 | `setIcon(menuId, icon)` | Replace icon; an empty `Icon()` clears it |
 | `setEnabled(menuId, enabled)` | Disable selection while keeping the item visible |
 | `setMenuStyle(MenuStyle::Icons / MenuStyle::List)` | Choose carousel or scrolling list |
 | `menuCount()` | Total registered entries, including nested menus |
+| `selectedMenuItem()` | Selected menu entry ID, or Invalid outside the menu |
 
 Parents must be `Root` or an already registered submenu ID. No depth limit is hardcoded; hierarchy metadata and RAM set the practical limit. `begin()` adds a root Settings entry if settings exist and no explicit settings entry was added anywhere. Icons default to a numbered tile if no bitmap is set. On screens under 48 pixels high, menus use list layout even when `Icons` is selected.
 
@@ -119,6 +131,8 @@ bool event(indur::Event event, void *context);
 ```
 
 Drawing starts with a cleared canvas; the callback owns the entire page and its layout. Return true to consume an event. An unconsumed `Back` returns to the menu. Your custom renderer must respect canvas bounds. It can use your own screen size, icon, graph, or project-specific tuning behavior without coupling the core library to the robot.
+
+Returning from submenus, settings, custom screens, and grouped dashboards restores the originating menu item. Settings preserve their selected row after save/cancel. Directly opened settings and dashboards return home when they have no originating menu entry.
 
 ## Inputs
 
@@ -142,11 +156,15 @@ The last booleans select active-low and internal pull-ups. Active-high input use
 
 Click and hold events fire **after debounced release**. Repeats fire while held in the three-button editor, then suppress the release event. Default timing: debounce 25 ms, hold 350 ms, repeat 120 ms, stuck 5000 ms. Configure `ButtonTiming` fields before passing it to `Buttons`. `stuckMs = 0` disables the stuck timeout. Otherwise a stuck input is suppressed until release and a notification appears. `faultMask()` reports left/right/center bits 0/1/2. A held repeating edit also reaches this timeout; adjust it for your needs.
 
+That table describes the default `InputStyle::Standard`. `setInputStyle(InputStyle::Original)` selects original-style physical controls: left tap increases and right tap decreases in the editor; holds stay Back/Save in both button counts, with no editing repeat. Menus still use left/right Previous/Next; optional center selects. On unbound home, right tap opens the menu and center tap changes page. `inputStyle()` reports the profile. See the [gesture and home-binding guide](ORIGINAL_STYLE.md#keep-the-original-gestures).
+
 `ButtonFilter(timing).update(pressed, now, repeat=false)` is available independently and returns `Press::None`, `Click`, `Hold`, or `Repeat`. `stuck()` exposes its fault status; `held(now)` reports whether a stable, non-stuck press has crossed the hold threshold. Millisecond arithmetic supports the normal `millis()` rollover; provide monotonically advancing uint32_t timestamps and poll often enough to observe transitions. Do not use hold/debounce timing as a safety interlock.
 
-While a default Back/Select gesture is held, a release-action overlay provides feedback. Disable it with `buttons.showHoldHints(false)`. Intercept physical gestures with `buttons.onPress(handler, context=nullptr)`: `bool handler(uint8_t button, Press press, void *context)` returns true to consume the gesture. Indices are left=0, right=1, center=2. Returning false uses the default event mapping. A custom handler suppresses default hold hints. See [independent home gestures](INTERACTIONS.md#keep-independent-home-gestures).
+While a navigation hold is active, a full-screen action caption provides release feedback. It uses Save, Back, Select, or the configured home gesture label. Disable it with `buttons.showHoldHints(false)`. Intercept physical gestures with `buttons.onPress(handler, context=nullptr)`: `bool handler(uint8_t button, Press press, void *context)` returns true to consume the gesture. Indices are left=0, right=1, center=2. Returning false uses the profile's mapping. A custom handler suppresses default hold hints.
 
-Other input devices call `ui.handle(Event::Previous/Next/Select/Back)`. Use `shortcut(event, action, context=nullptr)` to override that event **only on the dashboard**; passing a null action restores normal behavior. `setThreeButtons(bool)` adjusts labels when using custom event sources.
+`bindHomeButton(button, Press::Click/Hold, label, action, context=nullptr)` binds each of the six home gestures and supplies its footer/hold label. Null action clears a binding. These bindings apply to home only; grouped dashboards retain their own navigation. `handleButton(button, press)` exposes the same mapping to other input adapters, while `setButtonHeld(button, held)` controls the associated held-action feedback. Indices and press types are validated. `Press::Repeat` is ignored for center and in original-style editors.
+
+Other input devices call `ui.handle(Event::Previous/Next/Select/Back)`. Semantic Next increases the editor value regardless of physical control profile. Use `shortcut(event, action, context=nullptr)` to override that event **only on home**; passing a null action restores normal behavior. `setThreeButtons(bool)` adjusts labels when using custom event sources.
 
 ## Runtime and navigation
 
@@ -156,13 +174,17 @@ Other input devices call `ui.handle(Event::Previous/Next/Select/Back)`. Use `sho
 | `tick(uint32_t now)` | Update timestamps, expire splash/notifications, render when dirty or refresh interval elapsed |
 | `render()` | Force a frame after begin; does not advance time |
 | `handle(Event)` | Dispatch an event after begin |
-| `home()` | Show dashboard; maintain dashboard page |
+| `home()` | Return to page zero of the configured home group/layout |
+| `setHomeGroup(group)` | Filter home body widgets; default AllGroups |
+| `setDashboardLayout(layout)` | Set home layout; default Auto |
+| `openDashboard(group, layout=DashboardLayout::Auto)` | Open a grouped dashboard; Back returns to its originating menu or home |
 | `openMenu(parent=Root)` | Open root or a valid submenu, selecting its first item |
 | `openSettings(group=AllGroups)` | Open filtered settings, selecting the first row |
 | `view()` | Return the current `View` |
 | `setTitle(const char*)` | Change dashboard title |
 | `setTheme(const Theme&)` | Copy layout/refresh preferences |
 | `notify(message, duration=1200)` | Timed overlay; does not block input or change view |
+| `setAlert(message)` | Persistent dashboard warning above the footer; null clears it |
 | `splash(title, icon=Icon(), duration=1000)` | Timed splash, then home; Back/Select skips it |
 | `progress(title, fraction)` | Progress screen; finite fraction clamps to 0..1, NaN becomes 0 |
 | `confirm(question, yesCallback, context=nullptr)` | YES/NO dialog, defaults NO; restores previous view before callback |
@@ -175,13 +197,18 @@ Call `tick` with the current time before showing timed views if your application
 
 | Field | Default | Meaning |
 | --- | --- | --- |
+| `style` | Original | InterfaceStyle::Original or Cards; independent of input style |
 | `radius` | 3 | Rounded panel radius; GFX adapter clamps to rectangle size |
 | `minWidgetWidth` | 48 | Desired minimum card width, clamped to at least 24 during layout |
 | `minWidgetHeight` | 22 | Desired minimum card height, clamped to at least 22 during layout |
+| `minBarWidth` | 24 | Minimum vertical sensor-column width |
+| `minStatusWidth` | 40 | Minimum compact status/context field width |
+| `statusRows` | 1 | One or two status rows, bounded to preserve body space |
+| `contextPageMs` | 2500 | Editor context-page rotation period; zero keeps the first page |
 | `iconSize` | 32 | Maximum icon slot size; also constrained to the screen |
 | `refreshMs` | 100 | Refresh interval, clamped to at least 1 ms |
 
-The first four fields are `uint8_t`; refresh is `uint16_t`. There is no built-in animation/framebuffer layer beyond the display adapter. More frequent refreshes consume more bus and CPU time.
+Layout dimensions and row counts are `uint8_t`; refresh and context-page periods are `uint16_t`. The timed splash includes a loading bar on screens at least 48 pixels high. Other application animations use custom screens and cooperative updates. More frequent refreshes consume more bus and CPU time.
 
 ## Display backends
 

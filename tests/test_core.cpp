@@ -232,6 +232,7 @@ void testNarrowNumbers() {
     Theme theme;
     theme.minWidgetWidth = 24;
     ui.setTheme(theme);
+    ui.setDashboardLayout(DashboardLayout::Cards);
     int value = 123456;
     ui.addValue("Value", value);
     ui.addBar("Bar", value, 0, 999999);
@@ -464,6 +465,244 @@ void testButtons() {
         }
     }
 }
+struct RecordedCanvas : TestCanvas {
+    RecordedCanvas(int16_t width = 128, int16_t height = 64) : TestCanvas(width, height) {}
+    struct Text {
+        int x, y;
+        std::string value;
+    };
+    struct Box {
+        int x, y, width, height;
+        bool filled;
+    };
+    std::vector<Text> textCalls;
+    std::vector<Box> boxes;
+    void clear() override {
+        labels.clear();
+        textCalls.clear();
+        boxes.clear();
+    }
+    void text(int16_t x, int16_t y, const char *s, uint8_t size, bool color) override {
+        TestCanvas::text(x, y, s, size, color);
+        textCalls.push_back({x, y, s});
+    }
+    void roundRect(int16_t x, int16_t y, int16_t w, int16_t h, uint8_t r, bool filled,
+                   bool color) override {
+        TestCanvas::roundRect(x, y, w, h, r, filled, color);
+        boxes.push_back({x, y, w, h, filled});
+    }
+    bool has(const char *text) const {
+        for (const auto &label : labels)
+            if (label == text)
+                return true;
+        return false;
+    }
+};
+void gridFormat(double value, char *out, size_t capacity, void *) {
+    snprintf(out, capacity, "%dx%d", int(value), int(value));
+}
+void testOriginalPresentationAndHistory() {
+    RecordedCanvas c;
+    UI ui(c);
+    ui.setInputStyle(InputStyle::Original);
+    int fields[] = {111, 222, 333, 444, 555, 666}, values[] = {1, 2, 3, 4, 5};
+    const char *labels[] = {"Alpha", "Beta", "Gamma", "Delta", "Epsilon"};
+    for (int i = 0; i < 3; ++i)
+        ui.addStatus(labels[i], fields[i]);
+    for (int i = 3; i < 6; ++i)
+        ui.addContext(labels[i - 3], fields[i], "", 0, 4);
+    for (int i = 0; i < 5; ++i)
+        ui.addNumber(labels[i], labels[i], values[i], 0, 100, 1, "", 0, 4);
+    int other = 777;
+    ui.addContext("X", other, "", 0, 6);
+    ui.addNumber("other", "Other", other, 0, 999, 1, "", 0, 6);
+    ui.setSettingFormatter(0, gridFormat);
+    int calls = 0;
+    ui.addAction("First", increment, &calls);
+    Id tools = ui.addMenu("Tools");
+    ui.addAction("Action", increment, &calls, tools);
+    Id settings = ui.addSettings("Tuning", 4, tools);
+    Id custom = ui.addScreen("Inspect", drawCustom, nullptr, nullptr, tools);
+    Id sensors = ui.addDashboard("Readings", 0, DashboardLayout::Arc, tools);
+    assert(ui.begin());
+    ui.openMenu();
+    ui.handle(Event::Next);
+    ui.handle(Event::Select);
+    ui.handle(Event::Next);
+    ui.handle(Event::Select);
+    ui.render();
+    assert(c.has("Alpha") && c.has("Beta") && c.has("Gamma") && c.has("1x1") && !c.has("Delta"));
+    bool thirdRow = false;
+    for (const auto &text : c.textCalls)
+        if (text.value == "Gamma" && text.y == 36)
+            thirdRow = true;
+    assert(thirdRow);
+    for (int i = 0; i < 4; ++i)
+        ui.handle(Event::Next);
+    ui.render();
+    assert(c.has("Gamma") && c.has("Delta") && c.has("Epsilon") && !c.has("Alpha"));
+    ui.handle(Event::Select);
+    ui.render();
+    bool editorBox = false;
+    for (const auto &box : c.boxes)
+        if (box.x == 0 && box.y == 26 && box.width == 128 && box.height == 27)
+            editorBox = true;
+    assert(editorBox && c.has("Epsilon") && c.has("SAVE") && !c.has("X:777"));
+    ui.handleButton(0, Press::Click);
+    assert(ui.pendingValue() == 6 && values[4] == 5);
+    ui.handleButton(1, Press::Click);
+    assert(ui.pendingValue() == 5);
+    ui.handleButton(0, Press::Hold);
+    assert(ui.selectedSetting() == 4 && values[4] == 5);
+    ui.handle(Event::Back);
+    assert(ui.selectedMenuItem() == settings);
+    ui.handle(Event::Next);
+    ui.handle(Event::Select);
+    ui.handle(Event::Back);
+    assert(ui.selectedMenuItem() == custom);
+    ui.handle(Event::Next);
+    ui.handle(Event::Select);
+    ui.handle(Event::Back);
+    assert(ui.selectedMenuItem() == sensors);
+    ui.handle(Event::Back);
+    assert(ui.selectedMenuItem() == tools);
+    ui.edit(5);
+    ui.render();
+    assert(c.has("X:777"));
+}
+void testContentLayouts() {
+    const int sizes[][2] = {{64, 32},  {128, 32}, {128, 48},  {128, 60},
+                            {128, 64}, {64, 128}, {128, 128}, {256, 64}};
+    for (const auto &size : sizes)
+        for (auto style : {InterfaceStyle::Original, InterfaceStyle::Cards}) {
+            TestCanvas c(size[0], size[1]);
+            UI ui(c);
+            Theme theme;
+            theme.style = style;
+            theme.statusRows = 2;
+            theme.minWidgetWidth = 24;
+            ui.setTheme(theme);
+            int data[43] = {};
+            for (int i = 0; i < 26; ++i) {
+                data[i] = 1000 + i;
+                Id id = i < 17 ? ui.addBar("IR", data[i], 0, 4095) : ui.addValue("Value", data[i]);
+                ui.setWidgetGroup(id, i % 2);
+            }
+            for (int i = 26; i < 36; ++i)
+                ui.addStatus("S", data[i]);
+            for (int i = 36; i < 43; ++i)
+                ui.addContext("C", data[i]);
+            ui.addNumber("n", "Tuning", data[0], 0, 4095);
+            assert(ui.begin());
+            for (auto layout : {DashboardLayout::Auto, DashboardLayout::Cards,
+                                DashboardLayout::Bars, DashboardLayout::Arc}) {
+                ui.openDashboard(1, layout);
+                unsigned pages = ui.dashboardPages();
+                assert(pages > 1);
+                for (unsigned page = 0; page < pages; ++page) {
+                    ui.render();
+                    ui.handle(Event::Next);
+                }
+                assert(ui.dashboardPage() == 0);
+                ui.handle(Event::Back);
+                assert(ui.view() == View::Dashboard);
+            }
+            ui.edit(0);
+            ui.render();
+            ui.tick(2600);
+            ui.render();
+            ui.setButtonHeld(1, true);
+            ui.render();
+            ui.setButtonHeld(1, false);
+            ui.home();
+            ui.setAlert("LOW BATTERY");
+            ui.render();
+            ui.setAlert(nullptr);
+            ui.render();
+        }
+    RecordedCanvas c;
+    UI ui(c);
+    int sensors[7] = {1, 2, 3, 4, 5, 6, 7}, value = 99;
+    for (int &sensor : sensors)
+        ui.addBar("IR", sensor, 0, 4095);
+    Id diagnostics = ui.addValue("Private group", value);
+    ui.setWidgetGroup(diagnostics, 1);
+    ui.setHomeGroup(0);
+    assert(ui.begin());
+    assert(ui.dashboardPages() == 2);
+    ui.render();
+    assert(!c.has("Private group"));
+    ui.openDashboard(1, DashboardLayout::Cards);
+    ui.render();
+    assert(c.has("Private group"));
+    assert(!ui.setWidgetGroup(diagnostics, AllGroups));
+    assert(!ui.setWidgetPlacement(Invalid, WidgetPlacement::Status));
+}
+void testOriginalPhysicalButtons() {
+    for (int center : {-1, 4}) {
+        for (int &pin : testPins)
+            pin = 1;
+        RecordedCanvas c;
+        UI ui(c);
+        int value = 5;
+        ui.addNumber("value", "Value", value, 0, 10);
+        ui.setInputStyle(InputStyle::Original);
+        Buttons buttons(ui, 2, 3, center);
+        buttons.begin();
+        assert(ui.begin());
+        uint32_t now = 0;
+        auto press = [&](int pin, bool hold) {
+            testPins[pin] = 0;
+            buttons.update(now += 50);
+            buttons.update(now += 30);
+            buttons.update(now += hold ? 400 : 40);
+            if (hold) {
+                ui.render();
+                assert(c.has("Release to confirm"));
+            }
+            testPins[pin] = 1;
+            buttons.update(now += 10);
+            buttons.update(now += 30);
+        };
+        ui.edit(0);
+        press(2, false);
+        assert(ui.pendingValue() == 6 && value == 5);
+        press(3, true);
+        assert(value == 6 && ui.view() == View::Settings);
+        press(3, true);
+        assert(ui.editing());
+        press(2, false);
+        press(2, true);
+        assert(value == 6 && ui.view() == View::Settings);
+        int calls[6] = {};
+        ui.home();
+        for (uint8_t i = 0; i < 6; ++i)
+            assert(ui.bindHomeButton(i / 2, i % 2 ? Press::Hold : Press::Click, "ACT", increment,
+                                     &calls[i]));
+        for (uint8_t i = 0; i < 6; ++i) {
+            ui.handleButton(i / 2, i % 2 ? Press::Hold : Press::Click);
+            assert(calls[i] == 1);
+        }
+        ui.openMenu();
+        ui.handleButton(1, Press::Click);
+        assert(calls[2] == 1);
+        assert(!ui.bindHomeButton(3, Press::Click, "X", increment));
+        assert(!ui.bindHomeButton(0, Press::Repeat, "X", increment));
+    }
+}
+void testUnitFormattingKeepsAllDigits() {
+    RecordedCanvas canvas(64, 64);
+    UI ui(canvas);
+    int value = 123456;
+    ui.addNumber("wide", "Long value", value, 0, 999999, 1, "unit that cannot fit");
+    assert(ui.begin());
+    ui.openSettings();
+    ui.render();
+    assert(canvas.has("123456"));
+    ui.edit(0);
+    ui.render();
+    assert(canvas.has("123456"));
+}
 struct BasicEeprom {
     uint8_t data[32] = {};
     uint8_t read(size_t a) { return data[a]; }
@@ -498,5 +737,9 @@ int main() {
     testStorage();
     testButtons();
     testAdapters();
+    testOriginalPresentationAndHistory();
+    testContentLayouts();
+    testOriginalPhysicalButtons();
+    testUnitFormattingKeepsAllDigits();
     std::cout << "IndurUI native checks passed\n";
 }

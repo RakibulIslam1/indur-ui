@@ -63,7 +63,7 @@ def main():
                 with Image.open(path) as actual, Image.open(expected) as original:
                     assert actual.size == original.size and actual.convert("1").tobytes() == original.convert("1").tobytes(), path.name
         print("Published JSON and PNG pixels match a fresh render")
-    print("Generated eight exact framebuffer captures using IndurUI and unmodified Adafruit_GFX")
+    print(f"Generated {len(list(output.glob('*.json')))} exact framebuffer captures using IndurUI and unmodified Adafruit_GFX")
 
 
 if __name__ == "__main__":

@@ -30,30 +30,42 @@ From a standalone checkout of this library, the same commands work: its `platfor
 
 The motor signals stay at the mini robot's configured neutral pulse throughout the test. Speed and gain settings are demonstration values and never drive the motors. Put the robot on a stand for the first upload to check your hardware's neutral behavior. Encoders are read only; turn the wheels by hand. Missing encoders show `-1` on the dashboard and “not responding” on their custom page.
 
-## Button controls
+## Original-style controls
 
-Gestures take effect after release; the default hold threshold is 350 ms. Release when the hint appears, before the five-second stuck-button limit.
+The mini example selects `InputStyle::Original`. Gestures take effect after release; the default hold threshold is 350 ms. The full-screen caption shows the pending action. Release before the five-second stuck-button limit.
 
-| Action | Three buttons | Two buttons |
-| --- | --- | --- |
-| Previous page / item, decrease | Tap left | Tap left |
-| Next page / item, increase | Tap right | Tap right |
-| Open menu / select / accept edit | Tap center | Hold right, release |
-| Back / cancel edit | Hold center or left, release | Hold left, release |
-| Repeat setting changes | Hold left/right while editing | Repeated taps; holds remain navigation gestures |
+| Home gesture | Action |
+| --- | --- |
+| Left tap / hold | Sensor arc / toggle a persistent demo alert |
+| Center tap / hold | System data / all settings |
+| Right tap / hold | Menu / confirmation and progress demo |
 
-Dashboard left/right gestures change automatically calculated pages. The button-test page consumes navigation events to display the last received gesture; Back leaves it normally. Its three boxes also show raw button levels, including the center input in the two-button build.
+With two buttons, the center gestures are unavailable; System data and every settings group remain reachable in the menu. The footer shows tap actions in their physical left/center/right positions.
+
+| Inside menus and settings | Both button counts |
+| --- | --- |
+| Tap left / right | Previous / next |
+| Edit: tap left / right | Increase / decrease |
+| Hold left, release | Back / discard edit |
+| Hold right, release | Select / save edit |
+| Center tap / hold, when present | Select/save / back/cancel |
+
+Holding left/right inside the editor remains Back/Save, including the three-button build. The generic Standard profile remains available to other projects with conventional direction and three-button repeating edits.
+
+Single-page grouped dashboards return on any tap, like the original diagnostic screens. Multi-page dashboards use left/right paging and a held Back. The button-test custom page consumes navigation events to show the last received gesture; Back leaves it. Its three boxes also show raw button levels.
 
 ## A useful test sequence
 
-1. Wait for the splash to finish. Move an object near each IR sensor and check its bar. Change pages to see raw encoder angles, uptime, free heap, and status.
-2. Open **Button test**. Check each tap and hold; leave with Back.
-3. Open **Live sensors** and **Encoder angles**. Readings update without blocking navigation.
-4. In **Settings → Demo controls**, edit speed and gain. Cancel once to verify rollback, then accept another edit. Turn **Lock speed/action** on: speed becomes read-only and the sample action in the gallery is disabled.
-5. In **Settings → Display**, switch between icon/list menus and three/five cards. Adjust contrast, then restore it to a visible value.
-6. In **Settings → Sampling / debug**, select the demo wave, adjust the sample interval, and enable serial logging. Return to real IR afterward.
-7. In **UI gallery**, try notification, splash, and confirmation/progress. Confirm the progress demo: it runs for three seconds without motion. Cancel another confirmation to check the back path.
-8. Change a setting, reboot, and check it survives. Use **Demo storage → Reload demo save** and **Reset demo only** to exercise load/defaults.
+1. Wait for the loading splash. Home has the compact L / SP / R strip and three vertical IR bars. Move an object near each sensor.
+2. Tap left for the staggered L / F / R readings. Tap again to return home.
+3. Tap center for paged System data, or open it through **Diagnostics**. Check uptime, free heap, status, and raw angles. Hold left to return.
+4. Open **Diagnostics / Button test** and check each tap/hold. Try **Encoder angles** from the root menu and turn the wheels by hand.
+5. Open **Settings / Demo controls**. Its numbered list shows three two-line rows. The editor keeps six live status/context fields above the pending value. Cancel once, accept another edit, and check the selected row remains in place.
+6. Turn **Lock speed/action** on: speed becomes read-only and the gallery's sample action is disabled.
+7. In **Settings / Display**, switch icon/list menus and Original/Cards interface style. Contrast remains adjustable.
+8. In **Settings / Sampling / debug**, select the demo wave, adjust sampling, and enable serial logging. In **Sensor tuning**, edit each demo threshold while watching all three live IR values in the editor. Thresholds demonstrate saved UI settings; they do not modify the original robot controller.
+9. In **UI gallery**, try notification, loading splash, persistent alert, and confirmed progress. The progress demo runs for three seconds without motion. Back cancels its work. A held left on home toggles the same persistent demo alert.
+10. Change a setting, reboot, and check it survives. Use **Demo storage / Reload demo save** and **Reset demo only**. Return from nested pages and confirm the previous menu item stays selected.
 
 Accepted edits autosave to a dedicated ESP32 Preferences namespace, **`indurui-demo`**, key **`journal`**. The sketch never opens, writes, or erases the original firmware's EEPROM namespace. The old calibration and maze data remain available when you upload `mini_bot` again. The default partition layout must stay the same; erasing all flash would also erase saved robot data.
 

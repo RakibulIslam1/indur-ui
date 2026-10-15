@@ -1,6 +1,6 @@
 {
   "name": "IndurUI",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Adaptive OLED dashboards, two/three-button menus and persistent typed settings for Arduino robots and embedded projects.",
   "keywords": ["oled", "ui", "robot", "menu", "eeprom", "dashboard"],
   "repository": {

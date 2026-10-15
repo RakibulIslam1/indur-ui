@@ -18,7 +18,7 @@ The output is the same IndurUI format as the desktop converter: MSB-first bits w
 
 ## OLED Lab
 
-Eight gallery captures are generated with the real IndurUI core, its `GfxCanvas` adapter, and unmodified Adafruit GFX 1.12.6. Values are fixed demo data. Each has a native 128×64 PNG, a nearest-neighbor 4× PNG, and its raw 1024-byte SSD1306 page buffer as JSON in `frames/`. These are exact rendered pixels, not photographs or replacement-font illustrations.
+Twelve gallery captures are generated with the real IndurUI core, its `GfxCanvas` adapter, and unmodified Adafruit GFX 1.12.6. Values are fixed demo data. Each has a native 128×64 PNG, a nearest-neighbor 4× PNG, and its raw 1024-byte SSD1306 page buffer as JSON in `frames/`. These are exact rendered pixels, not photographs or replacement-font illustrations.
 
 Select a gallery screen or import JSON/a complete `INDURUI_FRAME {...}` serial line. Export at 1×, 4×, or 8× without smoothing, or copy raw JSON. The parser validates dimensions, format, hexadecimal data, and byte count before replacing the current frame.
 

@@ -38,14 +38,24 @@ int main(int argc, char **argv) {
     FrameDisplay display;
     indur::GfxCanvas<FrameDisplay> canvas(display);
     indur::UI ui(canvas, "MINI UI LAB");
-    int sensors[] = {1820, 2460, 3100}, left = 1350, right = 2720, speed = 60;
+    int sensors[] = {1820, 2140, 2460, 2780, 3100}, left = 1350, right = 2720, speed = 60;
+    int sampleMs = 50, uptime = 123;
     bool logging = false;
     float gain = 1.2f;
-    const char *labels[] = {"Left IR", "Front IR", "Right IR"};
-    for (int i = 0; i < 3; ++i)
+    ui.setInputStyle(indur::InputStyle::Original);
+    ui.setHomeGroup(0);
+    ui.addStatus("L", left);
+    ui.addStatus("SP", speed);
+    ui.addStatus("R", right);
+    ui.addContext("Kp", gain, "", 1);
+    ui.addContext("Ms", sampleMs);
+    ui.addContext("Up", uptime);
+    const char *labels[] = {"L", "LD", "F", "RD", "R"};
+    for (int i = 0; i < 5; ++i)
         ui.addBar(labels[i], sensors[i], 0, 4095);
-    ui.addValue("L angle", left, "raw", 0);
-    ui.addValue("R angle", right, "raw", 0);
+    ui.setWidgetGroup(ui.addValue("Left", left, "raw", 0), 1);
+    ui.setWidgetGroup(ui.addValue("Right", right, "raw", 0), 1);
+    ui.setWidgetGroup(ui.addValue("Uptime", uptime, "s", 0), 1);
     auto editable = ui.addNumber("speed", "Demo speed", speed, 0, 100, 5, "%");
     ui.addNumber("gain", "Demo gain", gain, 0, 10, .1, "", 1);
     ui.addToggle("logging", "Logging", logging);
@@ -71,6 +81,18 @@ int main(int argc, char **argv) {
     ui.handle(indur::Event::Next);
     capture("editor");
     ui.handle(indur::Event::Back);
+    ui.openDashboard(0, indur::DashboardLayout::Arc);
+    capture("sensors");
+    ui.openDashboard(1, indur::DashboardLayout::Cards);
+    capture("telemetry");
+    ui.openMenu();
+    ui.setButtonHeld(1, true);
+    capture("hold");
+    ui.setButtonHeld(1, false);
+    ui.home();
+    ui.setAlert("LOW BATTERY");
+    capture("alert");
+    ui.setAlert(nullptr);
     ui.confirm("Start UI demo?", unused);
     capture("confirmation");
     ui.handle(indur::Event::Back);
@@ -81,6 +103,7 @@ int main(int argc, char **argv) {
     capture("notification");
     ui.notify(nullptr, 0);
     ui.splash("MINI UI LAB", indur::icons::robot(), 1000);
+    ui.tick(420);
     capture("splash");
     return 0;
 }

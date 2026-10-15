@@ -161,7 +161,7 @@ function paintMenu() {
     context.fillStyle = ink;
     for (let y = 0; y < 64; y++)
       for (let x = 0; x < 128; x++) {
-        if (x >= 48 && x < 80 && y >= 2 && y < 34) continue;
+        if (x >= 48 && x < 80 && y >= 5 && y < 37) continue;
         if (frame.bits[y * 128 + x]) context.fillRect(x, y, 1, 1);
       }
     const rect = fitRect(width, height, 32, 32);
@@ -173,7 +173,7 @@ function paintMenu() {
               Math.floor((x * width) / rect.width)
           ]
         )
-          context.fillRect(48 + rect.x + x, 2 + rect.y + y, 1, 1);
+          context.fillRect(48 + rect.x + x, 5 + rect.y + y, 1, 1);
       }
     return;
   }

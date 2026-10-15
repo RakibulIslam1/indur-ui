@@ -46,13 +46,17 @@ test("truncated, oversized, malformed, or wrong-format captures are rejected", (
   assert.equal(parseFrame({ ...valid, data: "ABCD" }).source.data, "abcd");
 });
 
-test("all eight published captures have complete, distinct nonempty framebuffers", async () => {
+test("all twelve published captures have complete, distinct nonempty framebuffers", async () => {
   const values = new Set();
   for (const name of [
     "dashboard",
     "menu",
     "settings",
     "editor",
+    "sensors",
+    "telemetry",
+    "hold",
+    "alert",
     "confirmation",
     "progress",
     "notification",
@@ -71,7 +75,7 @@ test("all eight published captures have complete, distinct nonempty framebuffers
     assert.ok(lit > 50 && lit < 8192, name);
     values.add(frame.source.data);
   }
-  assert.equal(values.size, 8);
+  assert.equal(values.size, 12);
 });
 
 test("pixel transforms preserve non-square images and undo-friendly data", () => {

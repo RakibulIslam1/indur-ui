@@ -20,7 +20,7 @@ constexpr uint8_t BTN_LEFT = 12, BTN_RIGHT = 10, BTN_CENTER = 11;
 constexpr uint8_t OLED_SDA = 4, OLED_SCL = 3, ENC_R_SDA = 2, ENC_R_SCL = 1;
 constexpr uint8_t LEFT_MOTOR_PIN = 9, RIGHT_MOTOR_PIN = 8;
 constexpr uint8_t sensorPins[] = {5, 6, 7};
-const char *sensorNames[] = {"Left IR", "Front IR", "Right IR"};
+const char *sensorNames[] = {"L", "F", "R"};
 
 // A separate NVS namespace: never opens or writes the robot's EEPROM namespace.
 class DemoStorage : public indur::Storage {
@@ -62,13 +62,15 @@ indur::Buttons buttons(ui, BTN_LEFT, BTN_RIGHT, INDURUI_MINI_TWO_BUTTONS ? -1 : 
 DemoStorage storage;
 bool ready = false, storageReady = false, jobRunning = false;
 bool logging = false, locked = false;
+bool alertDemo = false;
 int ir[3] = {}, angleLeft = -1, angleRight = -1;
+int thresholds[] = {2000, 2000, 2000};
 uint32_t uptime = 0, heapBytes = 0, jobStart = 0, lastSample = 0;
 int demoSpeed = 60, sampleMs = 50, contrast = 180;
 float demoGain = 1.2f;
-uint8_t menuStyle = 0, compact = 0, synthetic = 0;
+uint8_t menuStyle = 0, interfaceStyle = 0, synthetic = 0;
 const char *styleNames[] = {"Icons", "List"};
-const char *layoutNames[] = {"3 cards", "5 cards"};
+const char *layoutNames[] = {"Original", "Cards"};
 const char *sourceNames[] = {"Real IR", "Demo wave"};
 indur::Id speedSetting = indur::Invalid, lockableAction = indur::Invalid;
 const char *lastGesture = "Tap a button";
@@ -174,6 +176,22 @@ void drawAbout(indur::Canvas &c, void *) {
 void goHome(void *) {
     ui.home();
 }
+void showReadings(void *) {
+    ui.openDashboard(0, indur::DashboardLayout::Arc);
+}
+void showData(void *) {
+    ui.openDashboard(1, indur::DashboardLayout::Cards);
+}
+void showSettings(void *) {
+    ui.openSettings();
+}
+void showMenu(void *) {
+    ui.openMenu();
+}
+void toggleAlert(void *) {
+    alertDemo = !alertDemo;
+    ui.setAlert(alertDemo ? "DEMO ALERT" : nullptr);
+}
 void showNotification(void *) {
     ui.notify("HELLO FROM INDURUI", 1500);
 }
@@ -207,7 +225,9 @@ void askDefaults(void *) {
 
 void applySettings(indur::Id, indur::Change, void *) {
     indur::Theme theme;
-    theme.minWidgetWidth = compact ? 24 : 40;
+    theme.style = interfaceStyle ? indur::InterfaceStyle::Cards : indur::InterfaceStyle::Original;
+    theme.minWidgetWidth = 40;
+    theme.minBarWidth = 24;
     theme.refreshMs = 100;
     ui.setTheme(theme);
     ui.setMenuStyle(menuStyle ? indur::MenuStyle::List : indur::MenuStyle::Icons);
@@ -222,44 +242,78 @@ void statusText(void *, char *out, size_t capacity) {
 }
 
 void registerInterface() {
+    ui.setInputStyle(indur::InputStyle::Original);
+    ui.setHomeGroup(0);
+    ui.addStatus("L", angleLeft);
+    ui.addStatus("SP", demoSpeed);
+    ui.addStatus("R", angleRight);
+    ui.addContext("Kp", demoGain, "", 1, 1);
+    ui.addContext("Lock", locked, "", 0, 1);
+    ui.addContext("Up", uptime, "", 0, 1);
+    ui.addContext("C", contrast, "", 0, 2);
+    ui.addContext("UI", interfaceStyle, "", 0, 2);
+    ui.addContext("M", menuStyle, "", 0, 2);
+    ui.addContext("Ms", sampleMs, "", 0, 3);
+    ui.addContext("Src", synthetic, "", 0, 3);
+    ui.addContext("Log", logging, "", 0, 3);
+    for (uint8_t i = 0; i < 3; ++i)
+        ui.addContext(sensorNames[i], ir[i], "", 0, 4);
     for (uint8_t i = 0; i < 3; ++i)
         ui.addBar(sensorNames[i], ir[i], 0, 4095);
-    ui.addValue("L angle", angleLeft, "raw", 0);
-    ui.addValue("R angle", angleRight, "raw", 0);
-    ui.addValue("Uptime", uptime, "s", 0);
-    ui.addValue("Heap", heapBytes, "bytes", 0);
-    ui.addText("Status", statusText);
+    ui.setWidgetGroup(ui.addValue("L angle", angleLeft, "raw", 0), 1);
+    ui.setWidgetGroup(ui.addValue("R angle", angleRight, "raw", 0), 1);
+    ui.setWidgetGroup(ui.addValue("Uptime", uptime, "s", 0), 1);
+    ui.setWidgetGroup(ui.addValue("Heap", heapBytes, "bytes", 0), 1);
+    ui.setWidgetGroup(ui.addText("Status", statusText), 1);
     speedSetting = ui.addNumber("demo.speed", "Demo speed", demoSpeed, 0, 100, 5, "%", 0, 1);
     ui.addNumber("demo.gain", "Demo gain", demoGain, 0, 10, .1, "", 1, 1);
     ui.addToggle("demo.lock", "Lock speed/action", locked, 1);
     ui.addChoice("display.style", "Menu style", menuStyle, styleNames, 2, 2);
-    ui.addChoice("display.layout", "Card layout", compact, layoutNames, 2, 2);
+    ui.addChoice("display.theme", "Interface style", interfaceStyle, layoutNames, 2, 2);
     ui.addNumber("display.contrast", "OLED contrast", contrast, 0, 255, 5, "", 0, 2);
     ui.addChoice("sensor.source", "Sensor source", synthetic, sourceNames, 2, 3);
     ui.addNumber("sensor.period", "Sample period", sampleMs, 20, 500, 10, "ms", 0, 3);
     ui.addToggle("debug.logging", "Serial logging", logging, 3);
-    ui.addAction("Dashboard", goHome, nullptr, indur::Root, indur::icons::home());
-    ui.addScreen("Live sensors", drawSensors, nullptr, nullptr, indur::Root,
-                 indur::icons::sensors());
-    ui.addScreen("Encoder angles", drawEncoders, nullptr, nullptr, indur::Root,
-                 indur::icons::robot());
-    ui.addScreen("Button test", drawButtons, buttonEvents, nullptr, indur::Root,
-                 indur::icons::tools());
+    const char *thresholdKeys[] = {"sensor.thr.l", "sensor.thr.f", "sensor.thr.r"};
+    // Keys are hashed during registration; labels must outlive the UI.
+    static const char *savedLabels[] = {"Left threshold", "Front threshold", "Right threshold"};
+    for (uint8_t i = 0; i < 3; ++i)
+        ui.addNumber(thresholdKeys[i], savedLabels[i], thresholds[i], 0, 4095, 25, "ADC", 0, 4);
+    ui.addDashboard("Sensor readings", 0, indur::DashboardLayout::Arc, indur::Root,
+                    indur::icons::sensors());
     auto settings = ui.addMenu("Settings", indur::Root, indur::icons::settings());
     ui.addSettings("Demo controls", 1, settings, indur::icons::run());
     ui.addSettings("Display", 2, settings, indur::icons::settings());
     ui.addSettings("Sampling / debug", 3, settings, indur::icons::sensors());
+    ui.addSettings("Sensor tuning", 4, settings, indur::icons::sensors());
+    ui.addScreen("Encoder angles", drawEncoders, nullptr, nullptr, indur::Root,
+                 indur::icons::robot());
+    auto diagnostics = ui.addMenu("Diagnostics", indur::Root, indur::icons::tools());
+    ui.addDashboard("System data", 1, indur::DashboardLayout::Cards, diagnostics,
+                    indur::icons::info());
+    ui.addScreen("Button test", drawButtons, buttonEvents, nullptr, diagnostics,
+                 indur::icons::tools());
+    ui.addScreen("Raw sensor bars", drawSensors, nullptr, nullptr, diagnostics,
+                 indur::icons::sensors());
+    ui.addScreen("About / wiring", drawAbout, nullptr, nullptr, diagnostics, indur::icons::info());
     auto gallery = ui.addMenu("UI gallery", indur::Root, indur::icons::info());
     ui.addAction("Notification", showNotification, nullptr, gallery, indur::icons::info());
     ui.addAction("Splash screen", showSplash, nullptr, gallery, indur::icons::robot());
     ui.addAction("Confirm / progress", askDemo, nullptr, gallery, indur::icons::run());
+    ui.addAction("Persistent alert", toggleAlert, nullptr, gallery, indur::icons::info());
     lockableAction =
         ui.addAction("Lockable sample", lockedSample, nullptr, gallery, indur::icons::tools());
     auto saved = ui.addMenu("Demo storage", indur::Root, indur::icons::storage());
     ui.addAction("Save demo settings", saveSettings, nullptr, saved, indur::icons::storage());
     ui.addAction("Reload demo save", loadSettings, nullptr, saved, indur::icons::storage());
     ui.addAction("Reset demo only", askDefaults, nullptr, saved, indur::icons::tools());
-    ui.addScreen("About / wiring", drawAbout, nullptr, nullptr, indur::Root, indur::icons::info());
+    ui.addAction("Dashboard", goHome, nullptr, indur::Root, indur::icons::home());
+    ui.bindHomeButton(0, indur::Press::Click, "READ", showReadings);
+    ui.bindHomeButton(0, indur::Press::Hold, "ALERT", toggleAlert);
+    ui.bindHomeButton(1, indur::Press::Click, "MENU", showMenu);
+    ui.bindHomeButton(1, indur::Press::Hold, "DEMO", askDemo);
+    ui.bindHomeButton(2, indur::Press::Click, "DATA", showData);
+    ui.bindHomeButton(2, indur::Press::Hold, "SET", showSettings);
     ui.onChange(applySettings);
 }
 
@@ -332,7 +386,8 @@ void setup() {
     ready = true;
     ui.tick(millis());
     ui.splash("MINI UI LAB", indur::icons::robot(), 900);
-    Serial.println("[UI] MiniRobotTest ready. Motors neutral; original EEPROM untouched.");
+    Serial.println("[UI] MiniRobotTest 1.2 ready (original controls). Motors neutral; original "
+                   "EEPROM untouched.");
     Serial.println("[UI] Press h for navigation and screenshot commands.");
 }
 

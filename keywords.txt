@@ -16,3 +16,15 @@ addSettings	KEYWORD2
 addScreen	KEYWORD2
 attachStorage	KEYWORD2
 tick	KEYWORD2
+addStatus	KEYWORD2
+addContext	KEYWORD2
+addDashboard	KEYWORD2
+setWidgetPlacement	KEYWORD2
+setWidgetGroup	KEYWORD2
+setWidgetContextGroup	KEYWORD2
+setHomeGroup	KEYWORD2
+setDashboardLayout	KEYWORD2
+setSettingFormatter	KEYWORD2
+bindHomeButton	KEYWORD2
+setInputStyle	KEYWORD2
+setAlert	KEYWORD2

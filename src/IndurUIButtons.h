@@ -10,8 +10,8 @@ class Buttons {
   public:
     Buttons(UI &ui, int16_t left, int16_t right, int16_t center = -1,
             ButtonTiming timing = ButtonTiming(), bool activeLow = true, bool pullups = true)
-        : ui_(ui), activeLow_(activeLow), pullups_(pullups), hints_(true), faults_(0),
-          shownHolds_(0), handler_(0), context_(0) {
+        : ui_(ui), activeLow_(activeLow), pullups_(pullups), hints_(true), faults_(0), handler_(0),
+          context_(0) {
         pins_[0] = left;
         pins_[1] = right;
         pins_[2] = center;
@@ -35,30 +35,19 @@ class Buttons {
             if (pins_[i] < 0)
                 continue;
             bool pressed = activeLow_ ? !digitalRead(pins_[i]) : !!digitalRead(pins_[i]);
-            bool repeat = pins_[2] >= 0 && i < 2 && ui_.editing();
+            bool repeat =
+                pins_[2] >= 0 && i < 2 && ui_.editing() && ui_.inputStyle() == InputStyle::Standard;
             Press p = filters_[i].update(pressed, now, repeat);
             uint8_t bit = 1 << i;
             bool held = filters_[i].held(now);
-            if (hints_ && held && !repeat && !(shownHolds_ & bit) && !handler_) {
-                ui_.notify(i == 1 ? "RELEASE: SELECT" : "RELEASE: BACK", 60000);
-                shownHolds_ |= bit;
-            }
-            if (!held && (shownHolds_ & bit)) {
-                shownHolds_ &= ~bit;
-                ui_.notify(0, 0);
-            }
+            ui_.setButtonHeld(i, hints_ && held && !repeat && !handler_);
             if (filters_[i].stuck())
                 faults |= (1 << i);
             if (p == Press::None)
                 continue;
             if (handler_ && handler_(i, p, context_))
                 continue;
-            if (i == 2)
-                ui_.handle(p == Press::Hold ? Event::Back : Event::Select);
-            else if (p == Press::Hold)
-                ui_.handle(i == 0 ? Event::Back : Event::Select);
-            else
-                ui_.handle(i == 0 ? Event::Previous : Event::Next);
+            ui_.handleButton(i, p);
         }
         if (faults && faults != faults_)
             ui_.notify("BUTTON STUCK", 1800);
@@ -71,7 +60,7 @@ class Buttons {
     int16_t pins_[3];
     ButtonFilter filters_[3];
     bool activeLow_, pullups_, hints_;
-    uint8_t faults_, shownHolds_;
+    uint8_t faults_;
     ButtonHandler handler_;
     void *context_;
 };

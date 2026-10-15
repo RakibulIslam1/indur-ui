@@ -74,6 +74,8 @@ struct Widget {
     double lo, hi;
     uint8_t decimals;
     WidgetStyle style;
+    WidgetPlacement placement;
+    uint8_t group, contextGroup;
     bool visible;
 };
 struct Setting {
@@ -85,6 +87,8 @@ struct Setting {
     uint8_t defaults[8];
     uint8_t decimals, group, choiceCount;
     bool readOnly;
+    ValueFormatter formatter;
+    void *formatContext;
 };
 struct Entry {
     const char *label;
@@ -95,11 +99,15 @@ struct Entry {
     Icon icon;
     Id parent;
     uint8_t kind, group;
+    DashboardLayout layout;
     bool enabled;
 };
 struct Shortcut {
     Action action;
     void *context;
+};
+struct HomeButton : Shortcut {
+    const char *label;
 };
 struct Buffer {
     uint8_t *data;
@@ -218,13 +226,19 @@ struct UI::Impl {
     Array<Widget> widgets;
     Array<Setting> settings;
     Array<Entry> entries;
-    const char *title, *message, *modalTitle;
+    const char *title, *message, *modalTitle, *alert;
     Theme theme;
     View state, returnView;
     MenuStyle menuStyle;
+    InputStyle input;
+    DashboardLayout layout, homeLayout;
     Id parent, selected, editingId, customId;
     uint16_t page;
     uint8_t group;
+    uint8_t dashboardGroup, homeGroup, heldButtons;
+    Id settingsReturn, dashboardReturn;
+    uint16_t listFirst;
+    bool childDashboard;
     double pending, fraction;
     bool three, autosave, dirty, confirmYes, begun;
     uint32_t now, lastFrame, messageAt, messageDuration, splashAt, splashDuration;
@@ -235,14 +249,18 @@ struct UI::Impl {
     ChangeHandler changed;
     void *changeContext;
     Shortcut shortcuts[4];
+    HomeButton homeButtons[6];
     Storage *storage;
     size_t storageOffset, storageBytes;
     uint32_t schema;
 
     Impl(Canvas &canvas, const char *caption)
-        : c(canvas), title(caption), message(0), modalTitle(0), state(View::Dashboard),
-          returnView(View::Dashboard), menuStyle(MenuStyle::Icons), parent(Root), selected(0),
-          editingId(Invalid), customId(Invalid), page(0), group(AllGroups), pending(0), fraction(0),
+        : c(canvas), title(caption), message(0), modalTitle(0), alert(0), state(View::Dashboard),
+          returnView(View::Dashboard), menuStyle(MenuStyle::Icons), input(InputStyle::Standard),
+          layout(DashboardLayout::Auto), homeLayout(DashboardLayout::Auto), parent(Root),
+          selected(0), editingId(Invalid), customId(Invalid), page(0), group(AllGroups),
+          dashboardGroup(AllGroups), homeGroup(AllGroups), heldButtons(0), settingsReturn(Invalid),
+          dashboardReturn(Invalid), listFirst(0), childDashboard(false), pending(0), fraction(0),
           three(false), autosave(true), dirty(true), confirmYes(false), begun(false), now(0),
           lastFrame(0), messageAt(0), messageDuration(0), splashAt(0), splashDuration(0),
           fault(Error::None), confirmed(0), confirmedContext(0), changed(0), changeContext(0),
@@ -251,6 +269,7 @@ struct UI::Impl {
             shortcuts[i].action = 0;
             shortcuts[i].context = 0;
         }
+        memset(homeButtons, 0, sizeof(homeButtons));
     }
     bool fail(Error e) {
         fault = e;
@@ -259,12 +278,53 @@ struct UI::Impl {
     bool validParent(Id id) const {
         return id == Root || (id < entries.count && entries[id].kind == 1);
     }
-    uint16_t countWidgets() const {
+    bool bodyMatches(const Widget &w, uint8_t kind = 0) const {
+        bool compactStatus = c.height() < 48 && (w.placement == WidgetPlacement::Status ||
+                                                 w.placement == WidgetPlacement::StatusAndEditor);
+        return w.visible && (w.placement == WidgetPlacement::Body || compactStatus) &&
+               (compactStatus || dashboardGroup == AllGroups || w.group == dashboardGroup) &&
+               (!kind || (kind == 1 ? w.style == WidgetStyle::Bar : w.style != WidgetStyle::Bar));
+    }
+    uint16_t countWidgets(uint8_t kind = 0) const {
         uint16_t n = 0;
         for (uint16_t i = 0; i < widgets.count; ++i)
-            if (widgets[i].visible)
+            if (bodyMatches(widgets[i], kind))
                 ++n;
         return n;
+    }
+    bool stripMatches(const Widget &w, bool editor) const {
+        return w.visible &&
+               (w.placement == WidgetPlacement::StatusAndEditor ||
+                w.placement == (editor ? WidgetPlacement::Editor : WidgetPlacement::Status)) &&
+               (!editor || w.contextGroup == AllGroups ||
+                (editingId < settings.count && w.contextGroup == settings[editingId].group));
+    }
+    uint16_t stripCount(bool editor) const {
+        uint16_t n = 0;
+        for (Id i = 0; i < widgets.count; ++i)
+            if (stripMatches(widgets[i], editor))
+                ++n;
+        return n;
+    }
+    uint16_t stripColumns() const {
+        return maximum<int16_t>(1, c.width() / maximum<uint8_t>(24, theme.minStatusWidth));
+    }
+    uint16_t stripRows(bool editor) const {
+        if (!stripCount(editor) || c.height() < 48)
+            return 0;
+        uint16_t limit = editor ? (c.height() >= 60 ? 2 : 1)
+                                : minimum<uint8_t>(2, maximum<uint8_t>(1, theme.statusRows));
+        if (!editor)
+            limit = minimum<uint16_t>(limit, maximum<int16_t>(1, (c.height() - 34) / 13));
+        return minimum<uint16_t>(limit, (stripCount(editor) + stripColumns() - 1) / stripColumns());
+    }
+    int16_t bodyTop() const {
+        if (layout == DashboardLayout::Arc)
+            return 0;
+        return stripRows(false) ? stripRows(false) * 13 : c.height() < 48 ? 0 : 13;
+    }
+    bool splitBody() const {
+        return layout == DashboardLayout::Auto && theme.style == InterfaceStyle::Original;
     }
     uint16_t countEntries() const {
         uint16_t n = 0;
@@ -292,16 +352,29 @@ struct UI::Impl {
                 return i;
         return Invalid;
     }
-    uint16_t cellsPerPage() const {
-        int16_t h = c.height() < 48 ? c.height() - 12 : c.height() - 24;
+    uint16_t cellsPerPage(uint8_t kind = 0) const {
+        if (kind == 1 || layout == DashboardLayout::Bars || layout == DashboardLayout::Arc)
+            return maximum<int16_t>(1, c.width() / maximum<uint8_t>(24, theme.minBarWidth));
+        int16_t h = c.height() - bodyTop() - 12;
         uint16_t columns =
             maximum<uint16_t>(1, c.width() / maximum<uint8_t>(24, theme.minWidgetWidth));
         uint16_t rows = maximum<uint16_t>(1, h / maximum<uint8_t>(22, theme.minWidgetHeight));
         return columns * rows;
     }
+    uint16_t bodyPages() const {
+        if (splitBody()) {
+            uint16_t bars = (countWidgets(1) + cellsPerPage(1) - 1) / cellsPerPage(1);
+            uint16_t values = (countWidgets(2) + cellsPerPage(2) - 1) / cellsPerPage(2);
+            return maximum<uint16_t>(1, bars + values);
+        }
+        return maximum<uint16_t>(1, (countWidgets() + cellsPerPage() - 1) / cellsPerPage());
+    }
     uint16_t pages() const {
-        return maximum<uint16_t>(1,
-                                 ((uint32_t)countWidgets() + cellsPerPage() - 1) / cellsPerPage());
+        uint16_t perStrip = maximum<uint16_t>(1, stripRows(false) * stripColumns());
+        uint16_t statusPages = layout == DashboardLayout::Arc || !stripRows(false)
+                                   ? 1
+                                   : (stripCount(false) + perStrip - 1) / perStrip;
+        return maximum<uint16_t>(bodyPages(), statusPages);
     }
     void textFit(int16_t x, int16_t y, int16_t width, const char *s, uint8_t size = 1,
                  bool color = true) {
@@ -313,7 +386,7 @@ struct UI::Impl {
         for (size_t i = 0; text[i]; ++i)
             if ((uint8_t)text[i] < 32 || (uint8_t)text[i] > 126)
                 text[i] = '?';
-        if (s && strlen(s) > chars && chars >= 3) {
+        if (s && strlen(s) > chars && chars >= 6) {
             text[chars - 1] = '.';
             text[chars - 2] = '.';
             text[chars - 3] = '.';
@@ -332,13 +405,14 @@ struct UI::Impl {
                 size, color);
     }
     void footer(const char *left, const char *right, const char *middle = "") {
-        int16_t y = c.height() - 10, side = (c.width() - 6) / 3;
-        c.roundRect(0, y, side, 10, theme.radius, true, true);
-        c.roundRect(c.width() - side, y, side, 10, theme.radius, true, true);
-        c.roundRect(side + 3, y, c.width() - 2 * side - 6, 10, theme.radius, false, true);
-        textFit(2, y + 1, side - 4, left, 1, false);
-        textFit(c.width() - side + 2, y + 1, side - 4, right, 1, false);
-        textFit(side + 5, y + 1, c.width() - 2 * side - 10, middle);
+        int16_t y = c.height() - 11, side = (c.width() - 8) / 3;
+        c.roundRect(0, y, side, 11, theme.radius, true, true);
+        c.roundRect(c.width() - side, y, side, 11, theme.radius, true, true);
+        if (middle && *middle)
+            c.roundRect(side + 4, y, c.width() - 2 * side - 8, 11, theme.radius, false, true);
+        textFit(2, y + 2, side - 4, left, 1, false);
+        textFit(c.width() - side + 2, y + 2, side - 4, right, 1, false);
+        textFit(side + 6, y + 2, c.width() - 2 * side - 12, middle);
     }
     void header(const char *label) {
         c.roundRect(0, 0, c.width(), 11, theme.radius, false, true);
@@ -359,7 +433,11 @@ struct UI::Impl {
                     c.pixel(x + ix, y + iy, true);
     }
     void format(const Setting &s, double number, char *out, size_t n, bool live) {
-        if (s.choiceCount && finiteNumber(number)) {
+        if (s.formatter) {
+            s.formatter(number, out, n, s.formatContext);
+            if (n)
+                out[n - 1] = 0;
+        } else if (s.choiceCount && finiteNumber(number)) {
             int index = (int)clamp(number, 0, s.choiceCount - 1);
             copyText(out, n, s.choices[index]);
         } else if (live && s.binding.format)
@@ -369,42 +447,158 @@ struct UI::Impl {
         else
             detail::decimalText(number, s.decimals, out, n);
     }
+    void withUnit(const char *value, const char *unit, int16_t width, char *out, size_t size) {
+        if (strlen(value) * 6 > (size_t)maximum<int16_t>(0, width)) {
+            copyText(out, size, "--");
+            return;
+        }
+        bool fits = unit && *unit &&
+                    (strlen(value) + 1 + strlen(unit)) * 6 <= (size_t)maximum<int16_t>(0, width);
+        snprintf(out, size, "%s%s%s", value, fits ? " " : "", fits ? unit : "");
+    }
+    void formatWidget(const Widget &w, char *value, size_t size) {
+        if (w.text)
+            w.text(w.context, value, size);
+        else if (w.binding.format)
+            w.binding.format(w.binding.context, value, size, w.decimals);
+        else
+            detail::decimalText(w.binding.read(w.binding.context), w.decimals, value, size);
+        value[size - 1] = 0;
+    }
+    void strip(bool editor) {
+        uint16_t total = stripCount(editor), rows = stripRows(editor);
+        if (!total || !rows)
+            return;
+        uint16_t columns = stripColumns(), perPage = rows * columns;
+        uint16_t stripPages = (total + perPage - 1) / perPage;
+        uint16_t current = editor
+                               ? (theme.contextPageMs ? now / theme.contextPageMs : 0) % stripPages
+                               : page % stripPages;
+        uint16_t first = current * perPage, visible = minimum<uint16_t>(perPage, total - first);
+        uint16_t ordinal = 0, drawn = 0;
+        for (Id i = 0; i < widgets.count && drawn < visible; ++i) {
+            const Widget &w = widgets[i];
+            if (!stripMatches(w, editor) || ordinal++ < first)
+                continue;
+            uint16_t row = drawn / columns, col = drawn % columns;
+            uint16_t rowCount = minimum<uint16_t>(columns, visible - row * columns);
+            int16_t x = col * c.width() / rowCount,
+                    width = (col + 1) * c.width() / rowCount - x - 1;
+            c.roundRect(x, row * 13, width, 11, theme.radius, false, true);
+            char value[48], line[64];
+            formatWidget(w, value, sizeof(value));
+            int16_t chars = (width - 4) / 6, length = strlen(value);
+            if (length > chars)
+                copyText(line, sizeof(line), "--");
+            else {
+                int16_t labelChars = maximum<int16_t>(0, chars - length - 1);
+                if (labelChars)
+                    snprintf(line, sizeof(line), "%.*s:%s", labelChars, w.label, value);
+                else
+                    copyText(line, sizeof(line), value);
+            }
+            textFit(x + 2, row * 13 + 2, width - 4, line);
+            ++drawn;
+        }
+    }
+    void restoreMenu(Id entry) {
+        if (entry >= entries.count) {
+            state = View::Menu;
+            selected = 0;
+            return;
+        }
+        parent = entries[entry].parent;
+        selected = 0;
+        for (Id i = 0; i < entry; ++i)
+            if (entries[i].parent == parent)
+                ++selected;
+        state = View::Menu;
+        listFirst = 0;
+    }
+    const char *holdCaption(uint8_t button) const {
+        if (state == View::Dashboard && !childDashboard) {
+            const HomeButton &binding = homeButtons[button * 2 + 1];
+            if (binding.action && binding.label)
+                return binding.label;
+            if (button == 1)
+                return "MENU";
+        }
+        return button != 1 ? "BACK" : state == View::Editor ? "SAVE" : "SELECT";
+    }
     void dashboard() {
         bool compact = c.height() < 48;
-        if (!compact)
+        if (layout != DashboardLayout::Arc && stripCount(false))
+            strip(false);
+        else if (!compact && layout != DashboardLayout::Arc)
             header(title);
-        uint16_t total = countWidgets();
         page %= pages();
-        uint16_t first = page * cellsPerPage(),
-                 visible = minimum<uint16_t>(cellsPerPage(), total > first ? total - first : 0);
+        uint16_t bodyPage = page % bodyPages();
+        uint8_t kind = 0;
+        if (splitBody()) {
+            uint16_t barPages = (countWidgets(1) + cellsPerPage(1) - 1) / cellsPerPage(1);
+            kind = bodyPage < barPages ? 1 : 2;
+            if (kind == 2)
+                bodyPage -= barPages;
+        }
+        bool bars = kind == 1 || layout == DashboardLayout::Bars;
+        bool arc = layout == DashboardLayout::Arc;
+        uint16_t total = countWidgets(kind), capacity = cellsPerPage(kind);
+        uint16_t first = bodyPage * capacity,
+                 visible = minimum<uint16_t>(capacity, total > first ? total - first : 0);
         if (!total)
             centered(compact ? 4 : 24, "Add widgets");
         uint16_t cols = minimum<uint16_t>(
-            maximum<uint16_t>(1, c.width() / maximum<uint8_t>(24, theme.minWidgetWidth)),
+            bars || arc
+                ? capacity
+                : maximum<uint16_t>(1, c.width() / maximum<uint8_t>(24, theme.minWidgetWidth)),
             maximum<uint16_t>(1, visible));
         uint16_t rows = maximum<uint16_t>(1, (visible + cols - 1) / cols);
         uint16_t ordinal = 0, painted = 0;
         for (uint16_t i = 0; i < widgets.count && painted < visible; ++i) {
             Widget &w = widgets[i];
-            if (!w.visible || ordinal++ < first)
+            if (!bodyMatches(w, kind) || ordinal++ < first)
                 continue;
             uint16_t column = painted % cols, row = painted / cols;
             int16_t x = column * c.width() / cols, endX = (column + 1) * c.width() / cols;
-            int16_t top = compact ? 0 : 13, available = c.height() - top - 12;
+            int16_t top = bodyTop(), available = c.height() - top - 12;
             int16_t y = top + row * available / rows;
             int16_t bottom = top + (row + 1) * available / rows;
             int16_t width = endX - x - 2, height = bottom - y - (compact ? 1 : 2);
+            char value[48] = {};
+            formatWidget(w, value, sizeof(value));
+            if (bars || arc) {
+                int16_t cellWidth = endX - x;
+                if (arc) {
+                    double t = visible <= 1 ? 0 : 2.0 * painted / (visible - 1) - 1;
+                    int16_t valueY = 15 + (int16_t)((c.height() - 25 - 15) * fabs(t));
+                    valueY = maximum<int16_t>(9, minimum<int16_t>(c.height() - 20, valueY));
+                    textFit(x + 1, valueY - 9, cellWidth - 1, w.label);
+                    char line[64];
+                    withUnit(value, w.unit, cellWidth - 1, line, sizeof(line));
+                    if (w.style == WidgetStyle::Text)
+                        textFit(x + 1, valueY, cellWidth - 1, value);
+                    else
+                        valueFit(x + 1, valueY, cellWidth - 1, line);
+                } else {
+                    textFit(x + 1, top + 1, cellWidth - 1, w.label);
+                    bool showValue = cellWidth >= 32 || w.style != WidgetStyle::Bar;
+                    int16_t bottom = c.height() - (showValue ? 21 : 17), barTop = top + 11;
+                    if (bottom > barTop && w.style == WidgetStyle::Bar) {
+                        double number = w.binding.read(w.binding.context);
+                        double fraction =
+                            finiteNumber(number) ? clamp((number - w.lo) / (w.hi - w.lo), 0, 1) : 0;
+                        int16_t barHeight = (int16_t)((bottom - barTop) * fraction);
+                        c.fillRect(x + 4, bottom - barHeight, maximum<int16_t>(1, cellWidth - 8),
+                                   barHeight, true);
+                    }
+                    if (showValue)
+                        valueFit(x + 1, c.height() - 20, cellWidth - 1, value);
+                }
+                ++painted;
+                continue;
+            }
             c.roundRect(x, y, width, height, theme.radius, false, true);
             textFit(x + 3, y + (compact ? 1 : 2), width - 6, w.label);
-            char value[48] = {};
-            if (w.text)
-                w.text(w.context, value, sizeof(value));
-            else if (w.binding.format)
-                w.binding.format(w.binding.context, value, sizeof(value), w.decimals);
-            else
-                detail::decimalText(w.binding.read(w.binding.context), w.decimals, value,
-                                    sizeof(value));
-            value[sizeof(value) - 1] = 0;
             if (w.style == WidgetStyle::Bar) {
                 double n = w.binding.read(w.binding.context);
                 double f = finiteNumber(n) ? clamp((n - w.lo) / (w.hi - w.lo), 0, 1) : 0;
@@ -428,7 +622,25 @@ struct UI::Impl {
         }
         char counter[18];
         snprintf(counter, sizeof(counter), "%u/%u", (unsigned)(page + 1), (unsigned)pages());
-        footer("PREV", "NEXT", three && pages() == 1 ? "MENU" : counter);
+        const char *left = "PREV", *right = "NEXT",
+                   *middle = three && pages() == 1 ? "MENU" : counter;
+        if (childDashboard) {
+            left = "BACK";
+            right = pages() == 1 ? "BACK" : "NEXT";
+            middle = pages() == 1 ? "" : counter;
+        } else {
+            if (input == InputStyle::Original) {
+                right = "MENU";
+                middle = three ? "PAGE" : counter;
+            }
+            if (homeButtons[0].action)
+                left = homeButtons[0].label;
+            if (homeButtons[2].action)
+                right = homeButtons[2].label;
+            if (three && homeButtons[4].action)
+                middle = homeButtons[4].label;
+        }
+        footer(left, right, middle);
     }
     void menu() {
         uint16_t count = countEntries();
@@ -444,19 +656,20 @@ struct UI::Impl {
             int16_t size = minimum<int16_t>(
                 c.width() - 10,
                 minimum<int16_t>(theme.iconSize, maximum<int16_t>(8, c.height() - 30)));
+            int16_t iconY = theme.style == InterfaceStyle::Original ? 5 : 2;
             if (item.icon.valid())
-                drawIcon(item.icon, (c.width() - size) / 2, 2, size, size);
+                drawIcon(item.icon, (c.width() - size) / 2, iconY, size, size);
             else {
-                c.roundRect((c.width() - size) / 2, 2, size, size, theme.radius, false, true);
+                c.roundRect((c.width() - size) / 2, iconY, size, size, theme.radius, false, true);
                 char n[8];
                 snprintf(n, sizeof(n), "%u", (unsigned)(selected + 1));
-                centered(2 + (size - 8) / 2, n);
+                centered(iconY + (size - 8) / 2, n);
             }
             centered(c.height() - 22, item.label);
-            int16_t h = maximum<int16_t>(6, c.height() - 28);
-            c.fillRect(c.width() - 3, 2, 1, h, true);
+            int16_t h = maximum<int16_t>(6, c.height() - 20);
+            c.fillRect(c.width() - 3, 5, 1, h, true);
             c.fillRect(c.width() - 4,
-                       2 + (int32_t)selected * (h - 4) / maximum<uint16_t>(1, count - 1), 3, 4,
+                       5 + (int32_t)selected * (h - 4) / maximum<uint16_t>(1, count - 1), 3, 4,
                        true);
         } else {
             header(parent == Root ? "Menu" : entries[parent].label);
@@ -471,12 +684,66 @@ struct UI::Impl {
                 textFit(4, y + 1, c.width() - 12, e.label, 1, !active);
             }
         }
-        if (three)
+        if (three && input == InputStyle::Standard)
             footer("PREV", "NEXT", item.enabled ? "OK" : "LOCK");
-        else
-            footer("BACK", item.enabled ? "SELECT" : "LOCKED", "-/+");
+        else {
+            char index[18];
+            snprintf(index, sizeof(index), "%u/%u", (unsigned)(selected + 1), (unsigned)count);
+            footer("BACK", item.enabled ? "SELECT" : "LOCKED", index);
+        }
     }
     void settingsView() {
+        if (theme.style == InterfaceStyle::Original && c.height() >= 48) {
+            uint16_t count = countSettings(), rows = maximum<int16_t>(1, (c.height() - 13) / 17);
+            c.roundRect(0, 0, c.width(), c.height() - 11, theme.radius, false, true);
+            if (!count)
+                centered(22, "No settings");
+            else {
+                selected %= count;
+                if (selected < listFirst)
+                    listFirst = selected;
+                if (selected >= listFirst + rows)
+                    listFirst = selected - rows + 1;
+                if (listFirst + rows > count)
+                    listFirst = count > rows ? count - rows : 0;
+                for (uint16_t row = 0; row < rows && listFirst + row < count; ++row) {
+                    Setting &setting = settings[settingAt(listFirst + row)];
+                    int16_t y = 2 + row * 17;
+                    bool active = listFirst + row == selected;
+                    char number[8], value[40], line[64];
+                    snprintf(number, sizeof(number), "%u", (unsigned)count);
+                    int16_t badgeWidth = maximum<int16_t>(17, strlen(number) * 6 + 4),
+                            labelX = badgeWidth + 4;
+                    c.roundRect(2, y, badgeWidth, 16, theme.radius, active, true);
+                    snprintf(number, sizeof(number), "%u", (unsigned)(listFirst + row + 1));
+                    textFit(4, y + 4, badgeWidth - 4, number, 1, !active);
+                    textFit(labelX, y, c.width() - labelX - 6, setting.label);
+                    format(setting, setting.binding.read(setting.binding.context), value,
+                           sizeof(value), true);
+                    if (setting.choiceCount)
+                        copyText(line, sizeof(line), value);
+                    else
+                        withUnit(value, setting.unit, c.width() - labelX - 6, line, sizeof(line));
+                    if (!setting.choiceCount &&
+                        strlen(value) * 6 > (size_t)(c.width() - labelX - 6))
+                        copyText(line, sizeof(line), "--");
+                    textFit(labelX, y + 8, c.width() - labelX - 6, line);
+                }
+                int16_t track = c.height() - 16;
+                int16_t thumb =
+                    maximum<int16_t>(4, (int32_t)track * minimum<uint16_t>(rows, count) / count);
+                c.fillRect(c.width() - 3, 2, 1, track, true);
+                c.fillRect(c.width() - 4,
+                           2 + (int32_t)selected * (track - thumb) /
+                                   maximum<uint16_t>(1, count - 1),
+                           3, thumb, true);
+            }
+            if (three && input == InputStyle::Standard)
+                footer("PREV", "NEXT", "EDIT");
+            else
+                footer("BACK", "SELECT");
+            return;
+        }
         header("Settings");
         uint16_t count = countSettings();
         if (!count)
@@ -508,6 +775,32 @@ struct UI::Impl {
     }
     void editor() {
         Setting &s = settings[editingId];
+        if (theme.style == InterfaceStyle::Original && c.height() >= 48) {
+            uint16_t rows = stripRows(true);
+            if (rows)
+                strip(true);
+            else
+                header(s.label);
+            int16_t top = rows ? rows * 13 : 13, height = c.height() - 11 - top;
+            c.roundRect(0, top, c.width(), height, theme.radius, false, true);
+            char value[40], line[64];
+            format(s, pending, value, sizeof(value), false);
+            if (s.choiceCount)
+                copyText(line, sizeof(line), value);
+            else
+                withUnit(value, s.unit, c.width() - 8, line, sizeof(line));
+            if (rows)
+                textFit(4, top + 2, c.width() - 8, s.label);
+            else
+                textFit(4, top + 2, c.width() - 8, "Adjust value");
+            uint8_t size = height >= 37 && strlen(line) * 12 <= (size_t)c.width() - 8 ? 2 : 1;
+            centered(top + (height >= 37 ? 16 : 14), line, size);
+            if (input == InputStyle::Original || !three)
+                footer("BACK", "SAVE", "+/-");
+            else
+                footer("-", "+", "SAVE");
+            return;
+        }
         header(s.label);
         char value[40];
         format(s, pending, value, sizeof(value), false);
@@ -702,6 +995,7 @@ Id UI::addWidget(const char *label, Binding binding, const char *unit, uint8_t d
     w.text = reader;
     w.context = context;
     w.visible = true;
+    w.contextGroup = AllGroups;
     if (!p_->widgets.push(w)) {
         p_->fail(Error::OutOfMemory);
         return Invalid;
@@ -814,6 +1108,17 @@ Id UI::addSettings(const char *s, uint8_t g, Id parent, Icon icon) {
 Id UI::addScreen(const char *s, ScreenDraw d, ScreenEvent e, void *ctx, Id parent, Icon icon) {
     return addEntry(s, 3, 0, d, e, ctx, parent, icon, 0);
 }
+Id UI::addDashboard(const char *s, uint8_t group, DashboardLayout layout, Id parent, Icon icon) {
+    if ((uint8_t)layout > (uint8_t)DashboardLayout::Arc) {
+        if (p_)
+            p_->fail(Error::InvalidArgument);
+        return Invalid;
+    }
+    Id id = addEntry(s, 4, 0, 0, 0, 0, parent, icon, group);
+    if (id != Invalid)
+        p_->entries[id].layout = layout;
+    return id;
+}
 bool UI::setIcon(Id id, Icon icon) {
     if (!p_ || id >= p_->entries.count || (icon.data && !icon.valid()))
         return p_ ? p_->fail(Error::InvalidArgument) : false;
@@ -835,10 +1140,40 @@ bool UI::setWidgetVisible(Id id, bool v) {
     p_->dirty = true;
     return true;
 }
+bool UI::setWidgetPlacement(Id id, WidgetPlacement placement) {
+    if (!p_ || id >= p_->widgets.count ||
+        (uint8_t)placement > (uint8_t)WidgetPlacement::StatusAndEditor)
+        return false;
+    p_->widgets[id].placement = placement;
+    p_->dirty = true;
+    return true;
+}
+bool UI::setWidgetGroup(Id id, uint8_t group) {
+    if (!p_ || id >= p_->widgets.count || group == AllGroups)
+        return false;
+    p_->widgets[id].group = group;
+    p_->dirty = true;
+    return true;
+}
+bool UI::setWidgetContextGroup(Id id, uint8_t group) {
+    if (!p_ || id >= p_->widgets.count)
+        return false;
+    p_->widgets[id].contextGroup = group;
+    p_->dirty = true;
+    return true;
+}
 bool UI::setReadOnly(Id id, bool v) {
     if (!p_ || id >= p_->settings.count)
         return false;
     p_->settings[id].readOnly = v;
+    return true;
+}
+bool UI::setSettingFormatter(Id id, ValueFormatter formatter, void *context) {
+    if (!p_ || id >= p_->settings.count)
+        return false;
+    p_->settings[id].formatter = formatter;
+    p_->settings[id].formatContext = context;
+    p_->dirty = true;
     return true;
 }
 void UI::onChange(ChangeHandler h, void *ctx) {
@@ -878,6 +1213,99 @@ void UI::setThreeButtons(bool v) {
         p_->dirty = true;
     }
 }
+void UI::setInputStyle(InputStyle style) {
+    if (p_) {
+        p_->input = style;
+        p_->dirty = true;
+    }
+}
+InputStyle UI::inputStyle() const {
+    return p_ ? p_->input : InputStyle::Standard;
+}
+bool UI::bindHomeButton(uint8_t button, Press press, const char *label, Action action,
+                        void *context) {
+    if (!p_ || button > 2 || (press != Press::Click && press != Press::Hold) || (action && !label))
+        return false;
+    HomeButton &binding = p_->homeButtons[button * 2 + (press == Press::Hold)];
+    binding.action = action;
+    binding.context = context;
+    binding.label = label;
+    p_->dirty = true;
+    return true;
+}
+void UI::handleButton(uint8_t button, Press press) {
+    if (!p_ || !p_->begun || button > 2 || press == Press::None ||
+        (uint8_t)press > (uint8_t)Press::Repeat)
+        return;
+    if (p_->state == View::Dashboard && !p_->childDashboard && press != Press::Repeat) {
+        HomeButton binding = p_->homeButtons[button * 2 + (press == Press::Hold)];
+        if (binding.action) {
+            binding.action(binding.context);
+            return;
+        }
+    }
+    if (button == 2) {
+        if (press == Press::Repeat)
+            return;
+        if (p_->input == InputStyle::Original && p_->state == View::Dashboard &&
+            !p_->childDashboard && press == Press::Click)
+            handle(Event::Next);
+        else
+            handle(press == Press::Hold ? Event::Back : Event::Select);
+        return;
+    }
+    if (press == Press::Hold) {
+        handle(button == 0 ? Event::Back : Event::Select);
+        return;
+    }
+    if (p_->input == InputStyle::Original) {
+        if (p_->state == View::Editor) {
+            if (press != Press::Repeat)
+                handle(button == 0 ? Event::Next : Event::Previous);
+            return;
+        }
+        if (p_->state == View::Dashboard && !p_->childDashboard && button == 1) {
+            handle(Event::Select);
+            return;
+        }
+    }
+    handle(button == 0 ? Event::Previous : Event::Next);
+}
+void UI::setButtonHeld(uint8_t button, bool held) {
+    if (!p_ || button > 2)
+        return;
+    uint8_t mask = uint8_t(1 << button), previous = p_->heldButtons;
+    if (held)
+        p_->heldButtons |= mask;
+    else
+        p_->heldButtons &= ~mask;
+    if (previous != p_->heldButtons)
+        p_->dirty = true;
+}
+void UI::setHomeGroup(uint8_t group) {
+    if (p_) {
+        p_->homeGroup = group;
+        if (!p_->childDashboard)
+            p_->dashboardGroup = group;
+        p_->page = 0;
+        p_->dirty = true;
+    }
+}
+void UI::setDashboardLayout(DashboardLayout layout) {
+    if (p_) {
+        p_->homeLayout = layout;
+        if (!p_->childDashboard)
+            p_->layout = layout;
+        p_->page = 0;
+        p_->dirty = true;
+    }
+}
+void UI::setAlert(const char *message) {
+    if (p_) {
+        p_->alert = message;
+        p_->dirty = true;
+    }
+}
 void UI::setAutoSave(bool v) {
     if (p_)
         p_->autosave = v;
@@ -914,6 +1342,17 @@ void UI::render() {
     if (!p_ || !p_->begun)
         return;
     p_->c.clear();
+    if (p_->heldButtons) {
+        uint8_t button = p_->heldButtons & 1 ? 0 : p_->heldButtons & 2 ? 1 : 2;
+        const char *caption = p_->holdCaption(button);
+        uint8_t size = strlen(caption) * 12 <= (size_t)p_->c.width() - 4 ? 2 : 1;
+        p_->centered((p_->c.height() - 8 * size) / 2 - 3, caption, size);
+        p_->centered(p_->c.height() - 9, "Release to confirm");
+        p_->c.present();
+        p_->dirty = false;
+        p_->lastFrame = p_->now;
+        return;
+    }
     switch (p_->state) {
     case View::Dashboard:
         p_->dashboard();
@@ -951,12 +1390,30 @@ void UI::render() {
         break;
     }
     case View::Splash: {
-        int16_t size = minimum<int16_t>(p_->c.width() - 4,
-                                        minimum<int16_t>(p_->theme.iconSize, p_->c.height() - 17));
-        p_->drawIcon(p_->splashIcon, (p_->c.width() - size) / 2, 1, size, size);
-        p_->centered(p_->c.height() - 12, p_->modalTitle);
+        int16_t size = minimum<int16_t>(
+            p_->c.width() - 4, minimum<int16_t>(p_->theme.iconSize,
+                                                p_->c.height() - (p_->c.height() >= 48 ? 30 : 17)));
+        p_->drawIcon(p_->splashIcon, (p_->c.width() - size) / 2, p_->c.height() >= 48 ? 5 : 1, size,
+                     size);
+        p_->centered(p_->c.height() - (p_->c.height() >= 48 ? 21 : 12), p_->modalTitle);
+        if (p_->c.height() >= 48) {
+            int16_t width = p_->c.width() * 2 / 5;
+            double fraction =
+                p_->splashDuration
+                    ? clamp(double(uint32_t(p_->now - p_->splashAt)) / p_->splashDuration, 0, 1)
+                    : 1;
+            p_->c.roundRect((p_->c.width() - width) / 2, p_->c.height() - 5, width, 4, 2, false,
+                            true);
+            p_->c.fillRect((p_->c.width() - width) / 2 + 1, p_->c.height() - 4,
+                           (int16_t)((width - 2) * fraction), 2, true);
+        }
         break;
     }
+    }
+    if (p_->alert && *p_->alert && p_->state == View::Dashboard) {
+        int16_t y = p_->c.height() - 21;
+        p_->c.fillRect(0, y, p_->c.width(), 9, false);
+        p_->textFit(2, y, p_->c.width() - 4, p_->alert);
     }
     if (p_->message) {
         int16_t y = (p_->c.height() - 22) / 2;
@@ -973,8 +1430,16 @@ void UI::handle(Event event) {
         return;
     p_->dirty = true;
     if (p_->state == View::Dashboard) {
+        if (p_->childDashboard &&
+            (event == Event::Back || event == Event::Select || p_->pages() == 1)) {
+            if (p_->dashboardReturn != Invalid)
+                p_->restoreMenu(p_->dashboardReturn);
+            else
+                home();
+            return;
+        }
         Shortcut &s = p_->shortcuts[(uint8_t)event];
-        if (s.action) {
+        if (!p_->childDashboard && s.action) {
             s.action(s.context);
             return;
         }
@@ -990,7 +1455,7 @@ void UI::handle(Event event) {
             if (p_->parent == Root)
                 home();
             else
-                openMenu(p_->entries[p_->parent].parent);
+                p_->restoreMenu(p_->parent);
         } else if (n && event == Event::Next)
             p_->selected = (p_->selected + 1) % n;
         else if (n && event == Event::Previous)
@@ -1008,6 +1473,8 @@ void UI::handle(Event event) {
                 openMenu(id);
             else if (e.kind == 2)
                 openSettings(e.group);
+            else if (e.kind == 4)
+                openDashboard(e.group, e.layout);
             else {
                 p_->customId = id;
                 p_->state = View::Custom;
@@ -1016,8 +1483,10 @@ void UI::handle(Event event) {
     } else if (p_->state == View::Settings) {
         uint16_t n = p_->countSettings();
         if (event == Event::Back) {
-            p_->state = View::Menu;
-            p_->selected = 0;
+            if (p_->settingsReturn != Invalid)
+                p_->restoreMenu(p_->settingsReturn);
+            else
+                home();
         } else if (n && event == Event::Next)
             p_->selected = (p_->selected + 1) % n;
         else if (n && event == Event::Previous)
@@ -1050,7 +1519,7 @@ void UI::handle(Event event) {
     } else if (p_->state == View::Custom) {
         Entry e = p_->entries[p_->customId];
         if ((!e.event || !e.event(event, e.context)) && event == Event::Back)
-            p_->state = View::Menu;
+            p_->restoreMenu(p_->customId);
     } else if (p_->state == View::Confirmation) {
         if (event == Event::Next || event == Event::Previous)
             p_->confirmYes = !p_->confirmYes;
@@ -1065,6 +1534,10 @@ void UI::handle(Event event) {
 }
 void UI::home() {
     if (p_) {
+        p_->dashboardGroup = p_->homeGroup;
+        p_->layout = p_->homeLayout;
+        p_->childDashboard = false;
+        p_->page = 0;
         p_->state = View::Dashboard;
         p_->dirty = true;
     }
@@ -1073,14 +1546,28 @@ void UI::openMenu(Id parent) {
     if (p_ && p_->validParent(parent)) {
         p_->parent = parent;
         p_->selected = 0;
+        p_->listFirst = 0;
         p_->state = View::Menu;
+        p_->dirty = true;
+    }
+}
+void UI::openDashboard(uint8_t group, DashboardLayout layout) {
+    if (p_) {
+        p_->dashboardReturn = p_->state == View::Menu ? p_->entryAt(p_->selected) : Invalid;
+        p_->dashboardGroup = group;
+        p_->layout = layout;
+        p_->page = 0;
+        p_->childDashboard = true;
+        p_->state = View::Dashboard;
         p_->dirty = true;
     }
 }
 void UI::openSettings(uint8_t group) {
     if (p_) {
+        p_->settingsReturn = p_->state == View::Menu ? p_->entryAt(p_->selected) : Invalid;
         p_->group = group;
         p_->selected = 0;
+        p_->listFirst = 0;
         p_->state = View::Settings;
         p_->dirty = true;
     }
@@ -1094,6 +1581,14 @@ bool UI::edit(Id id) {
         return false;
     }
     double value = s.binding.read(s.binding.context);
+    if (p_->state != View::Settings && p_->state != View::Editor)
+        p_->settingsReturn = p_->state == View::Menu ? p_->entryAt(p_->selected) : Invalid;
+    if (p_->group != AllGroups && p_->group != s.group)
+        p_->group = AllGroups;
+    p_->selected = 0;
+    for (Id i = 0; i < id; ++i)
+        if (p_->group == AllGroups || p_->settings[i].group == p_->group)
+            ++p_->selected;
     p_->pending = finiteNumber(value) ? clamp(value, s.lo, s.hi) : s.lo;
     p_->editingId = id;
     p_->state = View::Editor;
@@ -1272,6 +1767,9 @@ uint16_t UI::dashboardPage() const {
 }
 Id UI::selectedSetting() const {
     return p_ ? p_->state == View::Editor ? p_->editingId : p_->settingAt(p_->selected) : Invalid;
+}
+Id UI::selectedMenuItem() const {
+    return p_ && p_->state == View::Menu ? p_->entryAt(p_->selected) : Invalid;
 }
 Error UI::error() const {
     return p_ ? p_->fault : Error::OutOfMemory;

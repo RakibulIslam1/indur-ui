@@ -80,7 +80,7 @@ After committing and tagging a release (the explicit newline settings also make 
 
 ```sh
 mkdir -p dist
-git -c core.autocrlf=false -c core.eol=lf archive --format=zip --prefix=IndurUI/ --output=dist/IndurUI-1.1.0.zip v1.1.0
+git -c core.autocrlf=false -c core.eol=lf archive --format=zip --prefix=IndurUI/ --output=dist/IndurUI-1.2.0.zip v1.2.0
 ```
 
 Run `arduino-lint --compliance specification --library-manager submit` against a clean archive extracted into a folder named `IndurUI`. Build caches and local tool executables are excluded by Git; linting a developer checkout with those untracked folders gives irrelevant errors. Arduino Library Manager registration follows the [official registry procedure](https://github.com/arduino/library-registry#adding-a-library-to-library-manager), independently of creating a GitHub release.

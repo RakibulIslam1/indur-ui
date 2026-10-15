@@ -8,29 +8,31 @@ This table maps the original UI facilities to their general-purpose replacements
 | --- | --- |
 | OLED text helper | `Canvas::text` and the `GfxCanvas` adapter |
 | Boot logo and loading presentation | `splash`, `progress`, or a custom screen driven by the application's startup state |
-| Rounded status boxes | Automatic value/text dashboard cards |
-| Five live sensor bars | Any number of `addBar` registrations, auto-sized and paginated |
+| Rounded status boxes | `addStatus` compact fields, with optional editor sharing |
+| Five live sensor bars | `addBar` plus Auto/Bars/Arc layouts, auto-sized and paginated |
 | Sensor thresholds, min/max readings | Register arrays of values, bars, and numeric settings |
-| Home button actions, short and long | `shortcut` for navigation events; `Buttons::onPress` for all six physical gestures |
+| Home button actions, short and long | `bindHomeButton` for all six labeled gestures; `onPress` for lower-level interception |
 | Icon menu and current-item indicator | `addAction`, `addMenu`, `addSettings`, and `MenuStyle::Icons` |
 | Select/cancel with held buttons | Two-button Back/Select mapping; optional center button |
 | Held-action feedback | Default release-action overlay; `showHoldHints(false)` disables it |
 | Continuous button adjustments | `ButtonFilter` repeat and three-button editor repeat |
 | Stuck-low button detection | Debounced stuck timeout, `faultMask`, notification; no waiting for a stuck switch |
-| Scrolling adjustment list | Typed settings, filtered groups, automatic list pagination |
+| Scrolling adjustment list | Three numbered two-line rows, filtered groups, sliding viewport, preserved selection |
 | Scaled raw EEPROM tuning values | Variables in their engineering units, with numeric min/max/step/decimals |
 | Counter adjustment | `addNumber` bound to a counter or setting variable |
 | Special option lists | `addChoice`, including operating modes or application-specific options |
-| Numeric parameter tuning with live context | Normal editor plus `onChange`, or a custom tuning screen with live telemetry |
+| Numeric parameter tuning with live context | `addContext` / settings-group context above the editor, plus `onChange` |
 | Raw sensor and distance display pages | `addValue`/`addBar` or an `addScreen` callback |
 | Encoder and motor diagnostics | Read-only bindings and application-owned custom pages/actions |
 | Encoder-center/alignment tuning | Application-specific custom screen and numeric settings; no hardware assumptions in core |
 | Debug toggle and feedback | `addToggle` or `addAction`, followed by `notify` |
-| Low-battery warning | Application threshold check calling `notify`, or a persistent status widget |
+| Low-battery warning | Application threshold check calling persistent `setAlert`, or a status widget |
 | EEPROM refresh and saved parameters | Stable setting keys, `attachStorage`, `load`, `save`, and defaults |
 | Clear stored application data | `confirm` before an application action; UI storage and application data remain independently owned |
 | Maze solving, path runs, wall following | Application callbacks; the library renders the interface and receives events |
 | Serial console and odometry work during UI | Keep them in the main loop/task, alongside `buttons.update` and `ui.tick` |
+
+See the [original-style guide](ORIGINAL_STYLE.md) for native layouts and controls, including labeled home bindings, status/context placement, sensor arcs, custom value formats, and group navigation.
 
 ## Keep independent home gestures
 

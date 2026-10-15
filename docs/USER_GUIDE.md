@@ -10,7 +10,7 @@ Use an SSD1306 128×64 I²C display for the supplied examples. The library can u
 
 ## 2. Install the library
 
-1. Download **IndurUI-1.1.0.zip** from [Releases](https://github.com/RakibulIslam1/indur-ui/releases/latest).
+1. Download **IndurUI-1.2.0.zip** from [Releases](https://github.com/RakibulIslam1/indur-ui/releases/latest).
 2. In Arduino IDE, choose **Sketch → Include Library → Add .ZIP Library…**.
 3. Install **Adafruit GFX Library**, **Adafruit SSD1306**, and their **Adafruit BusIO** dependency through Library Manager.
 4. Select the correct board/core and port.
@@ -81,6 +81,8 @@ Keys must be unique and stable. Initial values and bounds must fit the variable'
 
 Entering the editor creates a pending value. Save applies it; Cancel preserves the existing project variable. Settings appear in the menu automatically unless you register explicit settings entries. Your application can use `onChange(...)` to update derived configuration after an accepted change.
 
+For the original compact status strip, numbered settings, sensor arc, live tuning context, and custom home actions, follow the [original-style guide](ORIGINAL_STYLE.md). These are library functions; no project-specific draw code is required.
+
 ## 6. Navigate
 
 | Operation | Two buttons | Three buttons |
@@ -90,7 +92,7 @@ Entering the editor creates a pending value. Save applies it; Cancel preserves t
 | Enter menu, select item, or save edit | Hold right, then release | Tap center |
 | Back or cancel edit | Hold left, then release | Hold center, then release |
 
-Outside the three-button editor, holding left/right also gives Back/Select. Default hold threshold is 350 ms, measured after debounce. The release-action hint appears while a navigation hold is active. A five-second held/stuck input is suppressed until release; timing is configurable.
+This table describes the default Standard profile. Use `ui.setInputStyle(indur::InputStyle::Original)` to retain left-increase/right-decrease editing and hold-left Back / hold-right Save with either button count. Outside the Standard three-button editor, holding left/right also gives Back/Select. Default hold threshold is 350 ms, measured after debounce. The release-action hint appears while a navigation hold is active. A five-second held/stuck input is suppressed until release; timing is configurable.
 
 ## 7. Add actions, submenus, and custom pages
 
