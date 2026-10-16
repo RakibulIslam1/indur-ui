@@ -37,13 +37,13 @@ The GUI check requires Tk and a graphical session; it hides its window, opens a 
 
 ```sh
 python -m pip install platformio==6.2.0
-pio run -e esp32s3-quick -e esp32s3-two -e esp32s3-persistent -e esp32s3-dashboard -e esp32s3-icons
-pio run -e mega-quick -e mega-two -e mega-persistent -e mega-dashboard -e mega-icons
-pio run -e mini_ui_test -e mini_ui_test_2buttons
+pio run -e esp32s3-quick -e esp32s3-two -e esp32s3-persistent -e esp32s3-dashboard -e esp32s3-icons -e esp32s3-sh1106
+pio run -e mega-quick -e mega-two -e mega-persistent -e mega-dashboard -e mega-icons -e mega-sh1106
+pio run -e mini_ui_test -e mini_ui_test_2buttons -e mini_ui_test_sh1106 -e mini_ui_test_sh1106_2buttons
 python tests/check_boards.py
 ```
 
-The pinned test environments use Espressif32 6.13.0 and Atmel AVR 5.3.0, with Adafruit SSD1306/GFX/BusIO dependencies. Successful compilation establishes API/build compatibility, not physical validation. Flash/static-RAM reports exclude runtime allocations such as UI metadata and the SSD1306 framebuffer. Record hardware testing separately, including board, screen size, address, wiring, timing, and EEPROM implementation.
+The pinned test environments use Espressif32 6.13.0 and Atmel AVR 5.3.0, with Adafruit SSD1306/SH110X/GFX/BusIO dependencies. Successful compilation establishes API/build compatibility, not physical validation. Flash/static-RAM reports exclude runtime allocations such as UI metadata and OLED framebuffers. Record hardware testing separately, including board, controller, screen size, address, wiring, timing, and EEPROM implementation.
 
 Local checks use MSVC 14.50, Python 3.11, Pillow 12.2.0, Tk 8.6, and PlatformIO 6.2.0. CI additionally runs the core with GCC and address/undefined-behavior sanitizers on Linux. `check_boards.py` uses PlatformIO's installed AVR compiler and real device headers to accept ATmega2560, reject ATmega328P/168/32U4 with the expected memory explanation, and reject an unsupported Arduino architecture. It checks target policy, not a complete memory budget.
 
@@ -80,7 +80,7 @@ After committing and tagging a release (the explicit newline settings also make 
 
 ```sh
 mkdir -p dist
-git -c core.autocrlf=false -c core.eol=lf archive --format=zip --prefix=IndurUI/ --output=dist/IndurUI-1.2.0.zip v1.2.0
+git -c core.autocrlf=false -c core.eol=lf archive --format=zip --prefix=IndurUI/ --output=dist/IndurUI-1.3.0.zip v1.3.0
 ```
 
-Run `arduino-lint --compliance specification --library-manager submit` against a clean archive extracted into a folder named `IndurUI`. Build caches and local tool executables are excluded by Git; linting a developer checkout with those untracked folders gives irrelevant errors. Arduino Library Manager registration follows the [official registry procedure](https://github.com/arduino/library-registry#adding-a-library-to-library-manager), independently of creating a GitHub release.
+Run `arduino-lint --compliance specification --library-manager update` against a clean archive extracted into a folder named `IndurUI`. IndurUI is already registered; new release tags are processed by the registry without another submission. Build caches and local tool executables are excluded by Git; linting a developer checkout with those untracked folders gives irrelevant errors. Arduino Library Manager registration follows the [official registry procedure](https://github.com/arduino/library-registry#adding-a-library-to-library-manager), independently of creating a GitHub release.

@@ -216,6 +216,8 @@ Layout dimensions and row counts are `uint8_t`; refresh and context-page periods
 
 `GfxCanvas<Display>` calls Adafruit GFX-style primitives and `display.display()` to present. It selects the built-in font, disables wrapping, and uses monochrome color 0/1. Initialize your display and bus before calling `ui.begin()`. It does not allocate its own framebuffer.
 
+The supplied examples cover `GfxCanvas<Adafruit_SSD1306>` and `GfxCanvas<Adafruit_SH1106G>` (the latter uses **Adafruit SH110X**). Display initialization remains controller-specific: SH1106 uses `begin(address, reset)`, while SSD1306 uses its power-mode argument first. See [OLED display setup](DISPLAYS.md) for a complete SH1106 example, contrast control, and mini robot variants.
+
 Use a custom `Canvas` for another display library, transport, or framebuffer. Match the fixed text metrics or adapt them inside the backend; the core cannot measure a proportional font. Canvas dimensions must be 64×32 or greater and no greater than 1024×1024.
 
 ## Icons

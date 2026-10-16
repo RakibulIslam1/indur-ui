@@ -79,7 +79,7 @@ jobs:
         with:
           python-version: "3.11"
       - run: python -m pip install platformio==6.2.0
-      - name: Compile all five examples
+      - name: Compile all six generic examples, including SH1106
         run: >-
           pio run
           -e ${{ matrix.board }}-quick
@@ -87,9 +87,10 @@ jobs:
           -e ${{ matrix.board }}-persistent
           -e ${{ matrix.board }}-dashboard
           -e ${{ matrix.board }}-icons
+          -e ${{ matrix.board }}-sh1106
       - name: Reject small AVR targets and accept the Mega memory baseline
         if: matrix.board == 'mega'
         run: python tests/check_boards.py
-      - name: Compile both mini robot button variants
+      - name: Compile both mini robot button counts with SSD1306 and SH1106
         if: matrix.board == 'esp32s3'
-        run: pio run -e mini_ui_test -e mini_ui_test_2buttons
+        run: pio run -e mini_ui_test -e mini_ui_test_2buttons -e mini_ui_test_sh1106 -e mini_ui_test_sh1106_2buttons

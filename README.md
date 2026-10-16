@@ -36,8 +36,9 @@ These exact 128×64 framebuffer captures use the real IndurUI core and Adafruit 
 - **Typed settings:** numbers, toggles, and choices bound to application variables. Editing stages changes until Save; Cancel preserves the current value.
 - **Persistence:** configurable EEPROM region, stable setting keys, CRC validation, two journal banks, defaults, and a custom storage interface.
 - **Custom graphics:** eight built-in icons, flash/RAM bitmaps, aspect-preserving scaling, and **Bitmap Studio**, a desktop and CLI converter.
+- **SSD1306 and SH1106 OLEDs:** use Adafruit SSD1306 or Adafruit SH110X with the same GFX canvas. A dedicated example covers 128×64 SH1106 modules commonly sold as 1.3-inch displays.
 - **Robot workflow tools:** nonblocking splash screens, notifications, progress views, confirmation prompts, diagnostics pages, and change callbacks.
-- **Five generic examples and a complete mini robot test, API documentation, native tests, and ESP32-S3/AVR compile checks.**
+- **Six generic examples and a complete mini robot test, API documentation, native tests, and ESP32-S3/AVR compile checks.**
 
 There is no fixed five-sensor dashboard or project-specific setting list. Register the items your application needs; RAM and display space determine capacity. Pages handle display overflow.
 
@@ -59,8 +60,8 @@ The Original control profile keeps left-increase/right-decrease editing and hold
 
 | Target | Status |
 | --- | --- |
-| ESP32-S3 / ESP32-S3-DevKitC-1 | All five examples compile in CI |
-| ATmega2560 / Arduino Mega 2560 | All five examples compile in CI; budget its 8 KiB SRAM carefully |
+| ESP32-S3 / ESP32-S3-DevKitC-1 | All six generic examples compile in CI |
+| ATmega2560 / Arduino Mega 2560 | All six generic examples compile in CI; budget its 8 KiB SRAM carefully |
 | Other ESP32 targets or classic AVR with ≥8 KiB SRAM and ≥64 KiB flash | Accepted by the target policy, not individually verified |
 | Classic ATmega328P/ATmega168 Nano, Uno, Pro Mini; ATmega32U4 boards | Unsupported; compile-time memory gate rejects them |
 | Other Arduino architectures | Not supported by this release; a validated port is required |
@@ -73,12 +74,11 @@ Read the [MCU compatibility and memory guide](docs/COMPATIBILITY.md) before choo
 
 ### Arduino IDE
 
-1. Download **IndurUI-1.2.0.zip** from [Releases](https://github.com/RakibulIslam1/indur-ui/releases/latest).
-2. Choose **Sketch → Include Library → Add .ZIP Library…** and select it.
-3. Install **Adafruit GFX Library** and your display library through Library Manager. The supplied examples use **Adafruit SSD1306** and its **Adafruit BusIO** dependency.
-4. Open **File → Examples → IndurUI → QuickStart**. Adjust the OLED dimensions, address, I²C configuration, and button pins for your board.
+1. Open **Library Manager**, search for **IndurUI** by **Rakibul Islam**, and install it with dependencies.
+2. For SSD1306 open **File → Examples → IndurUI → QuickStart**. For a 128×64 SH1106/SH1106G module, open **SH1106Display**, which uses **Adafruit SH110X**.
+3. Adjust the OLED address, I²C configuration, and button pins for your board. See the [display setup guide](docs/DISPLAYS.md).
 
-The GitHub release is ready to install as a ZIP. The [Arduino Library Manager submission (#9399)](https://github.com/arduino/library-registry/pull/9399) passed validation and was merged. The listing is still pending registry processing; use the ZIP until **IndurUI** appears in Library Manager.
+IndurUI is registered in Arduino Library Manager. New versions appear after Arduino's index refresh. To install **1.3.0** immediately, download **IndurUI-1.3.0.zip** from [Releases](https://github.com/RakibulIslam1/indur-ui/releases/latest), then choose **Sketch → Include Library → Add .ZIP Library…**. Install **Adafruit GFX Library**, **Adafruit SH110X** or **Adafruit SSD1306**, and **Adafruit BusIO** if needed.
 
 ### PlatformIO
 
@@ -86,13 +86,15 @@ Add these dependencies to your existing Arduino environment:
 
 ```ini
 lib_deps =
-    https://github.com/RakibulIslam1/indur-ui.git#v1.2.0
+    https://github.com/RakibulIslam1/indur-ui.git#v1.3.0
     adafruit/Adafruit SSD1306@^2.5.17
     adafruit/Adafruit GFX Library@^1.12.6
     adafruit/Adafruit BusIO@^1.17.4
 ```
 
 Use your project's normal `platform`, `board`, and `framework = arduino`. The repository's own `platformio.ini` builds its example test harness.
+
+For SH1106, select `adafruit/Adafruit SH110X@^2.1.15` as your display driver instead. The [SH1106Display example](examples/SH1106Display/SH1106Display.ino) shows its different `begin(address, reset)` call and supports two or three buttons. Select by controller, not screen diagonal alone.
 
 ## Your first dashboard
 
@@ -146,7 +148,7 @@ Settings appear in the menu automatically when no explicit settings entry was re
 | OLED VCC / GND | Supply and logic voltage supported by your OLED and board |
 | Left / right / center | Example GPIO 2 / 3 / 4, each switched to GND |
 | Pull-ups | Internal pull-ups enabled by default; no center button required |
-| OLED size and address | Examples use SSD1306 128×64 at `0x3C`; configure your module |
+| OLED size and address | SSD1306 or SH1106 128×64 at `0x3C`; configure your module and matching driver |
 
 Example GPIO numbers are placeholders, especially on boards with boot, flash, USB, or I²C pin restrictions. The library does not configure your display bus or claim these pins globally.
 
@@ -226,8 +228,10 @@ Accepted edits autosave when storage is attached. Unchanged settings skip storag
 | --- | --- |
 | [User guide](docs/USER_GUIDE.md) | Step-by-step installation, controls, bindings, settings, icons, and saves |
 | [MCU compatibility](docs/COMPATIBILITY.md) | Supported targets, classic Nano exclusion, and complete memory budgeting |
+| [OLED display setup](docs/DISPLAYS.md) | SSD1306 vs SH1106, driver initialization, 1.3-inch modules, mini variants |
 | [Original-style content guide](docs/ORIGINAL_STYLE.md) | Status/context strips, dashboard groups, sensor arcs, home gestures, and tuning formats |
 | [QuickStart](examples/QuickStart/QuickStart.ino) | Three buttons, values, bar, action, settings, splash |
+| [SH1106Display](examples/SH1106Display/SH1106Display.ino) | 128×64 SH1106/SH1106G via Adafruit SH110X, sample sensors, contrast, two/three buttons |
 | [TwoButtons](examples/TwoButtons/TwoButtons.ino) | Complete menu/editor navigation with two buttons |
 | [PersistentSettings](examples/PersistentSettings/PersistentSettings.ino) | EEPROM region, save/load, change callback, confirmed defaults |
 | [RobotDashboard](examples/RobotDashboard/RobotDashboard.ino) | Five sensors plus more pages, grouped settings, custom page, progress |
@@ -243,15 +247,15 @@ Accepted edits autosave when storage is attached. Unchanged settings skip storag
 
 ![IndurUI architecture](docs/assets/architecture.svg)
 
-The core uses C++11 and can build on a host without Arduino. Arduino firmware also applies the target policy in `IndurUIBoard.h`. `GfxCanvas` adapts a monochrome Adafruit GFX-compatible display with `display()`. SSD1306 is exercised by the examples; other controllers need an appropriate compatible display adapter or a custom `Canvas`. The UI accepts displays from 64×32 through 1024×1024; labels shorten to fit and screens below 48 pixels high use compact layouts.
+The core uses C++11 and can build on a host without Arduino. Arduino firmware also applies the target policy in `IndurUIBoard.h`. `GfxCanvas` adapts a monochrome Adafruit GFX-compatible display with `display()`. SSD1306 and SH1106G are exercised by the examples; other controllers need an appropriate compatible display adapter or a custom `Canvas`. The UI accepts displays from 64×32 through 1024×1024; labels shorten to fit and screens below 48 pixels high use compact layouts.
 
-Registration uses heap memory. Frame rendering uses fixed local buffers and no library heap allocations; saving/loading/default reset need temporary buffers. SSD1306 also allocates its framebuffer. Compile reports exclude those runtime allocations. The classic Nano/Uno is unsupported, and small AVR targets are rejected during compilation. Passing the memory gate does not guarantee that a large application fits.
+Registration uses heap memory. Frame rendering uses fixed local buffers and no library heap allocations; saving/loading/default reset need temporary buffers. Both OLED drivers also allocate a framebuffer. Compile reports exclude those runtime allocations. The classic Nano/Uno is unsupported, and small AVR targets are rejected during compilation. Passing the memory gate does not guarantee that a large application fits.
 
 UI state changes and button polling do not contain wait loops or delays. Display transfers, EEPROM commits, and your callbacks still take execution time. Keep timing-critical motor control in an appropriate independent task/interrupt, provide coherent sensor snapshots, and call UI methods from one application context. The library is not an ISR or real-time scheduling framework.
 
 ## Verification
 
-Native behavioral tests cover layout bounds, paging, navigation, editor cancellation, typed bindings, button timing/rollover, journal recovery, storage isolation, and injected read/write/flush failures. Converter tests check bit order, row padding, alpha handling, image fitting, generated headers, and file collisions. CI builds the five generic examples for ESP32-S3 and ATmega2560, both mini-specific variants for ESP32-S3, and checks expected rejection of small AVR targets using real MCU headers. Browser checks cover desktop/mobile layout, exact frame decoding, pixel edits, exports, imports, and a simulated Web Serial exchange. Captures are reproducibly generated from the core and unmodified Adafruit GFX 1.12.6.
+Native behavioral tests cover layout bounds, paging, navigation, editor cancellation, typed bindings, button timing/rollover, journal recovery, storage isolation, and injected read/write/flush failures. Converter tests check bit order, row padding, alpha handling, image fitting, generated headers, and file collisions. CI builds the six generic examples for ESP32-S3 and ATmega2560, four mini variants covering both OLED drivers and button counts on ESP32-S3, and checks expected rejection of small AVR targets using real MCU headers. Browser checks cover desktop/mobile layout, exact frame decoding, pixel edits, exports, imports, and a simulated Web Serial exchange. Captures are reproducibly generated from the core and unmodified Adafruit GFX 1.12.6.
 
 These checks do not replace testing your actual display, wiring, button hardware, and storage during power interruptions. See [CONTRIBUTING.md](CONTRIBUTING.md) for exact commands.
 

@@ -2,7 +2,16 @@
 #include <Wire.h>
 #include <Preferences.h>
 #include <esp_arduino_version.h>
+#ifndef INDURUI_MINI_SH1106
+#define INDURUI_MINI_SH1106 0
+#endif
+#if INDURUI_MINI_SH1106
+#include <Adafruit_SH110X.h>
+using OledDisplay = Adafruit_SH1106G;
+#else
 #include <Adafruit_SSD1306.h>
+using OledDisplay = Adafruit_SSD1306;
+#endif
 #include <IndurUI.h>
 #include <IndurUIGFX.h>
 #include <IndurUIButtons.h>
@@ -55,8 +64,8 @@ class DemoStorage : public indur::Storage {
     uint8_t data_[1024];
 };
 
-Adafruit_SSD1306 display(128, 64, &Wire, -1);
-indur::GfxCanvas<Adafruit_SSD1306> canvas(display);
+OledDisplay display(128, 64, &Wire, -1);
+indur::GfxCanvas<OledDisplay> canvas(display);
 indur::UI ui(canvas, "MINI UI LAB");
 indur::Buttons buttons(ui, BTN_LEFT, BTN_RIGHT, INDURUI_MINI_TWO_BUTTONS ? -1 : BTN_CENTER);
 DemoStorage storage;
@@ -233,8 +242,12 @@ void applySettings(indur::Id, indur::Change, void *) {
     ui.setMenuStyle(menuStyle ? indur::MenuStyle::List : indur::MenuStyle::Icons);
     ui.setReadOnly(speedSetting, locked);
     ui.setEnabled(lockableAction, !locked);
+#if INDURUI_MINI_SH1106
+    display.setContrast(static_cast<uint8_t>(contrast));
+#else
     display.ssd1306_command(SSD1306_SETCONTRAST);
     display.ssd1306_command(contrast);
+#endif
 }
 
 void statusText(void *, char *out, size_t capacity) {
@@ -318,7 +331,8 @@ void registerInterface() {
 }
 
 void captureFrame() {
-    // Raw SSD1306 page bytes, not the horizontal format used for icon arrays.
+    // Both drivers expose the same vertical-page bytes at rotation 0.
+    // Keep the existing OLED Lab format identifier for backwards compatibility.
     ui.render();
     Serial.print(
         "INDURUI_FRAME {\"format\":\"indurui-ssd1306-v1\",\"width\":128,\"height\":64,\"data\":\"");
@@ -364,8 +378,13 @@ void setup() {
     analogSetAttenuation(ADC_11db);
     pinMode(BTN_CENTER, INPUT_PULLUP);
     buttons.begin();
+#if INDURUI_MINI_SH1106
+    // Arduino-ESP32 retains the pins of the already started Wire bus.
+    if (!display.begin(0x3c, true)) {
+#else
     // periphBegin=false preserves the explicitly selected mini robot bus pins.
     if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3c, true, false)) {
+#endif
         Serial.println("[UI] OLED initialization failed");
         return;
     }
@@ -386,8 +405,13 @@ void setup() {
     ready = true;
     ui.tick(millis());
     ui.splash("MINI UI LAB", indur::icons::robot(), 900);
-    Serial.println("[UI] MiniRobotTest 1.2 ready (original controls). Motors neutral; original "
+    Serial.println("[UI] MiniRobotTest 1.3 ready (original controls). Motors neutral; original "
                    "EEPROM untouched.");
+#if INDURUI_MINI_SH1106
+    Serial.println("[UI] Display: SH1106G / Adafruit SH110X");
+#else
+    Serial.println("[UI] Display: SSD1306 / Adafruit SSD1306");
+#endif
     Serial.println("[UI] Press h for navigation and screenshot commands.");
 }
 

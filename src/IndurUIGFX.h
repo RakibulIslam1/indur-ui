@@ -3,6 +3,8 @@
 
 namespace indur {
 
+// Buffered monochrome Adafruit GFX drivers, including SSD1306 and SH1106G (SH110X).
+// Initialize the chosen driver and its bus before calling UI::begin().
 template <typename Display> class GfxCanvas : public Canvas {
   public:
     explicit GfxCanvas(Display &display) : display_(display) {}

@@ -6,8 +6,8 @@ IndurUI's full interface needs room for its program, OLED framebuffer, UI metada
 
 | MCU / board | Status | Meaning |
 | --- | --- | --- |
-| ESP32-S3, tested on the ESP32-S3-DevKitC-1 target | Supported build baseline | All five examples compile in CI; adjust pins and display wiring for your board |
-| ATmega2560 / Arduino Mega 2560 | Supported build baseline | All five examples compile in CI; 8 KiB SRAM still requires a careful application budget |
+| ESP32-S3, tested on the ESP32-S3-DevKitC-1 target | Supported build baseline | All six generic examples compile in CI; adjust pins and display wiring for your board |
+| ATmega2560 / Arduino Mega 2560 | Supported build baseline | All six generic examples compile in CI; 8 KiB SRAM still requires a careful application budget |
 | Other ESP32 Arduino targets | Accepted family, not individually verified | Enough nominal memory does not establish board/core/display integration; validate the complete application |
 | Other classic AVR devices with at least 8 KiB SRAM and 64 KiB flash | Pass the memory gate, not individually verified | Minimum eligibility only; not a promise that every application fits |
 | Classic Nano / Uno / Pro Mini with ATmega328P, or ATmega168 variants | Unsupported; compilation rejected | Too little memory for this full UI configuration |
@@ -45,6 +45,8 @@ framebuffer bytes = width × ceil(height / 8)
 ```
 
 The 128×64 framebuffer alone uses half of a classic Nano's 2 KiB SRAM. UI metadata, settings, serial/Wire buffers, robot code, and the stack require additional room. A smaller screen or a few smaller icons does not make this full library a supported classic Nano build. The allocation formula comes from the [Adafruit SSD1306 implementation](https://github.com/adafruit/Adafruit_SSD1306/blob/master/Adafruit_SSD1306.cpp).
+
+The SH1106 example uses **Adafruit SH110X** and the same 1,024-byte framebuffer budget at 128×64. Choosing a 1.3-inch SH1106 display does not change the supported MCU policy. See [display setup and verification](DISPLAYS.md).
 
 Bitmap payloads use `ceil(width / 8) × height` bytes:
 

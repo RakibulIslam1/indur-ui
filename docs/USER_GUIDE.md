@@ -6,15 +6,15 @@ IndurUI displays your project's data and lets buttons control menus and edit set
 
 Start with an **ESP32-S3** or **Arduino Mega 2560**, the two build-tested targets. The classic ATmega328P Nano/Uno is unsupported and is rejected at compile time. Other boards are described in the [compatibility and memory guide](COMPATIBILITY.md). There is no automatic small-MCU mode.
 
-Use an SSD1306 128×64 I²C display for the supplied examples. The library can use other compatible displays through an adapter, but the example driver and wiring must match your actual module.
+Use an SSD1306 or SH1106/SH1106G 128×64 I²C display. For an SH1106 module, commonly sold as a 1.3-inch OLED, select the **SH1106Display** example and **Adafruit SH110X** driver. Check the controller rather than choosing by diagonal size. The [display guide](DISPLAYS.md) covers both initialization APIs and wiring.
 
 ## 2. Install the library
 
-1. Download **IndurUI-1.2.0.zip** from [Releases](https://github.com/RakibulIslam1/indur-ui/releases/latest).
-2. In Arduino IDE, choose **Sketch → Include Library → Add .ZIP Library…**.
-3. Install **Adafruit GFX Library**, **Adafruit SSD1306**, and their **Adafruit BusIO** dependency through Library Manager.
+1. Search **IndurUI** by **Rakibul Islam** in Arduino Library Manager and install it with dependencies.
+2. Alternatively, download **IndurUI-1.3.0.zip** from [Releases](https://github.com/RakibulIslam1/indur-ui/releases/latest) and choose **Sketch → Include Library → Add .ZIP Library…**. ZIP installation is available while a new version awaits index refresh.
+3. Install **Adafruit GFX Library**, your matching **Adafruit SSD1306** or **Adafruit SH110X** driver, and **Adafruit BusIO** if needed.
 4. Select the correct board/core and port.
-5. Open **File → Examples → IndurUI → QuickStart** or **TwoButtons**.
+5. Open **File → Examples → IndurUI → QuickStart**, **TwoButtons**, or **SH1106Display** for SH1106.
 
 The Bitmap Studio desktop converter is optional and runs separately on your computer.
 
@@ -164,7 +164,7 @@ Check `display.begin()` and `ui.begin()` and handle `ui.errorText()` on failure.
 | Symptom | Check |
 | --- | --- |
 | Build rejects classic Nano/Uno | Expected restriction; use a supported board for this full library |
-| Blank OLED | Address, I²C pins, supply/logic levels, dimensions, and display initialization result |
+| Blank OLED | Match SSD1306 vs SH1106 driver first; then address, I²C pins, supply/logic levels, dimensions, and initialization result |
 | Setup fails after adding items | Registration errors, duplicate keys, bounds, or insufficient memory |
 | Number shows `--` | Increase card width or use fewer/narrower-format readings per page |
 | Value resets after restart | Storage attachment, load result, explicit saves for application-originated changes |
